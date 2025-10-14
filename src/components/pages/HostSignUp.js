@@ -1,10 +1,10 @@
 import {useState} from "react";
-import bg from "./pages/homepage-comp/images/forest-bg.jpg";
+import bg from "./hostpage-comp/images/hostsignup2.jpg";
 import {Link} from "react-router-dom";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
-import { auth } from "../firebaseConfig";
+import { auth } from "../../firebaseConfig";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { db } from "../../firebaseConfig";
 
 const HostSignUp = () => {
     const [fullName, setFullName] = useState("");

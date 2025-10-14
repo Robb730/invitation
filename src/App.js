@@ -5,7 +5,7 @@ import NotFound from './components/pages/NotFound'
 import Homepage from './components/pages/Homepage'
 import HostPage from './components/pages/HostPage'
 import ProtectedRoute from './components/pages/ProtectedRoute'
-import HostSignUp from './components/HostSignUp'
+import HostSignUp from './components/pages/HostSignUp'
 
 function App() {
   const router = createBrowserRouter([
