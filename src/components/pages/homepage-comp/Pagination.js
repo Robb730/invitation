@@ -68,8 +68,6 @@ const Pagination = ({onListingClick}) => {
           </div>
           
         </div>
-        
-
       </div>
     </div>
   )

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth, db } from "../../firebaseConfig";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import bg2 from './homepage-comp/images/forest-bg.jpg'
 
 
 const SignUp = () => {
@@ -131,11 +132,18 @@ const SignUp = () => {
   </div>
 
   {/* RIGHT SIDE - Illustration / Info */}
-  <div className="hidden md:flex w-1/2 bg-gradient-to-br from-olive-dark to-olive text-white flex-col justify-center items-center p-10 relative overflow-hidden">
+  <div
+    className="hidden md:flex w-1/2 text-white flex-col justify-center items-center p-10 relative overflow-hidden"
+    style={{
+      backgroundImage: `url(${bg2})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center"
+    }}
+  >
     <div className="absolute inset-0 bg-olive-dark/20 backdrop-blur-sm"></div>
 
     <div className="relative z-10 max-w-md text-center">
-      <h2 className="text-2xl font-bold mb-4">Welcome to OliveSpace 🌿</h2>
+      <h2 className="text-2xl font-bold mb-4">Welcome to KuboHub</h2>
       <p className="text-sm text-olive-light mb-6">
         Manage your account effortlessly. Enjoy modern design, smooth experience, and simple access
         to your data — all in one place.

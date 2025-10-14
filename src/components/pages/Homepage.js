@@ -4,6 +4,7 @@ import { auth } from "../../firebaseConfig";
 import Navbar from "./homepage-comp/Navbar";
 import Search from "./homepage-comp/Search";
 import Pagination from "./homepage-comp/Pagination";
+import Footer from "./homepage-comp/Footer";
 import { useNavigate } from "react-router-dom";
 
 const Homepage = () => {
@@ -39,10 +40,11 @@ const Homepage = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-beige min-h-screen">
       <Navbar user={user}/>
       <Search user= {user}/>
       <Pagination onListingClick={handleListingClick} />
+      <Footer/>
     </div>
   );
 };

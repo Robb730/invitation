@@ -10,7 +10,13 @@ module.exports = {
         'olive-dark': '#7D8F69',
         charcoal: '#2C2C2C',
         grayish: '#4A4A4A',
-      }
+      },
+      keyframes: {
+        'fade-in': {
+          '0%': { opacity: 0, transform: 'translateY(-5px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
+      },
     },
   },
   plugins: [],

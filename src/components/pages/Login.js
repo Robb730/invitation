@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../../firebaseConfig";
-import bg from './homepage-comp/images/bglogin.png'
+import bg from './homepage-comp/images/forest-bg.jpg'
 
 const Login = () => {
     const [email, setEmail] = useState("");
@@ -54,9 +54,9 @@ const Login = () => {
                 <button onClick={handleGoogleSignIn} className='bg-olive-dark text-white rounded-lg p-2 w-40 hover:bg-olive duration-700'>Log in with Google</button>
             </div>
             <div className='flex justify-center mt-5'>
-                <p className='text-gray-600'>Don't have an account?</p>
+                <p className='text-white'>Don't have an account?</p>
                 <Link to="/signup">
-                    <button className='text-olive-dark ml-2 hover:underline'>Sign Up</button>
+                    <button className='text-olive ml-2 hover:underline'>Sign Up</button>
                 </Link>
             </div>
             
