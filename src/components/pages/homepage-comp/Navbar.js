@@ -31,7 +31,8 @@ const Navbar = ({ user }) => {
 
         <div className='ml-6 flex items-center gap-x-5'>
           <button className='font-semibold bg-beige text-charcoal px-6 py-2 rounded hover:bg-grayish hover:text-beige duration-700'>
-            Be a Host
+            <Link to ="/becomehost">Be a Host</Link>
+            
           </button>
 
           <button

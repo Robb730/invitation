@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../../firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebaseConfig";
 import bg from './homepage-comp/images/forest-bg.jpg'
 
 const Login = () => {
@@ -27,8 +29,19 @@ const Login = () => {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
             if(user.emailVerified){
-                alert("Login successful");
-                navigate("/");
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                const userData = userDocSnap.data();
+                if(userData.role === "guest"){
+                    alert("Login successful");
+                    navigate("/");
+                } else if(userData.role === "host"){
+                    alert("Login successful");
+                    navigate("/hostpage");
+                } else {
+                    alert("Unknown user role. Contact support.");
+                }
+                
             } else {
                 alert("Please verify your email before logging in.");
                 return;

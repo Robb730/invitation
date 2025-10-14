@@ -5,6 +5,7 @@ import NotFound from './components/pages/NotFound'
 import Homepage from './components/pages/Homepage'
 import HostPage from './components/pages/HostPage'
 import ProtectedRoute from './components/pages/ProtectedRoute'
+import HostSignUp from './components/HostSignUp'
 
 function App() {
   const router = createBrowserRouter([
@@ -12,6 +13,7 @@ function App() {
     {path: "/hostpage", element: <HostPage/>},
     {path: "/login", element: <Login/>},
     {path: "/signup", element: <SignUp/>},
+    {path: "/becomehost", element: <HostSignUp/>},
     {path: "*", element: <NotFound/>},
     {path: "/protected", element: <ProtectedRoute><Homepage/></ProtectedRoute>}
   ]);
