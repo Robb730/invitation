@@ -10,6 +10,7 @@ module.exports = {
         'olive-dark': '#7D8F69',
         charcoal: '#2C2C2C',
         grayish: '#4A4A4A',
+        'olive-darker': '#4d602a',
       },
       keyframes: {
         'fade-in': {

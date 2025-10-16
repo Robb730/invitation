@@ -12,7 +12,7 @@ const Pagination = ({onListingClick}) => {
   return (
     <div>
         <div className='flex items-center px-14 py-4'>
-            <h1 className='text-xl font-semibold'>Popular</h1>
+            <h1 className='text-2xl font-semibold'>Popular</h1>
 
             <div className='ml-auto flex gap-2'>
             <button className='text-beige font-semibold bg-gray-400 rounded-full w-10 h-10 flex items-center justify-center'>&lt;</button>
