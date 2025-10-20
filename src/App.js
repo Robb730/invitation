@@ -6,6 +6,10 @@ import Homepage from './components/pages/Homepage'
 import HostPage from './components/pages/HostPage'
 import ProtectedRoute from './components/pages/ProtectedRoute'
 import HostSignUp from './components/pages/HostSignUp'
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+
+
+
 
 function App() {
   const router = createBrowserRouter([
@@ -19,7 +23,9 @@ function App() {
   ]);
   return (
     <>
-      <RouterProvider router={router}/>
+    <PayPalScriptProvider options={{ "client-id": "AVOE8rOmi0NKq68uIC51xVdcTFzxDptRhJu9GL10VQdPnTf2t32Eo2i9E8ZTp8sAxRRpX3arJAoAa5N2" }}>
+      <RouterProvider router={router}/>  
+    </PayPalScriptProvider>
     </>
   );
 }

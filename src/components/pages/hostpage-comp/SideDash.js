@@ -1,15 +1,14 @@
 import React from 'react'
 
-
-const SideDash = () => {
+const SideDash = ({ setActivePage }) => {
   const menuItems = [
-    { label: 'Dashboard'},
-    { label: 'My Listings'},
-    { label: 'Reservations'},
-    { label: 'Messages'},
-    { label: 'Earnings'},
-    { label: 'Settings'},
-    { label: 'Log Out'}
+    { label: 'Dashboard' },
+    { label: 'My Listings' },
+    { label: 'Reservations' },
+    { label: 'Messages' },
+    { label: 'Earnings' },
+    { label: 'Settings' },
+    { label: 'Log Out' },
   ]
 
   return (
@@ -18,9 +17,9 @@ const SideDash = () => {
         {menuItems.map((item, idx) => (
           <button
             key={idx}
+            onClick={() => setActivePage(item.label)} // 🟢 change active page
             className="flex items-center gap-x-3 px-4 py-2 rounded-lg hover:bg-white/15 transition duration-200 font-medium text-sm"
           >
-            
             <span>{item.label}</span>
           </button>
         ))}

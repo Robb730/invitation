@@ -30,10 +30,12 @@ const Navbar = ({ user }) => {
         <button className='font-semibold text-beige px-4 py-2 rounded hover:bg-grayish duration-300'>Services</button> 
 
         <div className='ml-6 flex items-center gap-x-5'>
+          <Link to ="/becomehost">
           <button className='font-semibold bg-beige text-charcoal px-6 py-2 rounded hover:bg-grayish hover:text-beige duration-700'>
-            <Link to ="/becomehost">Be a Host</Link>
+            Be a Host
             
           </button>
+          </Link>
 
           <button
             onClick={handleAuthClick}

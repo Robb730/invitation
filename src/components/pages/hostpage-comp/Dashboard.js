@@ -15,7 +15,7 @@ const Dashboard = () => {
   ]
 
   return (
-    <div className="ml-64 pt-24 px-10 bg-beige min-h-screen">
+    <div>
       {/* Header */}
       <h1 className="text-3xl font-semibold text-olive-dark mb-8">Dashboard</h1>
 
