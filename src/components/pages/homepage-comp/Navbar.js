@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../../firebaseConfig'; // adjust path if needed
+import logo from './images/kubohublogo_beige.svg'
 
 const Navbar = ({ user }) => {
   const navigate = useNavigate();
@@ -22,7 +23,15 @@ const Navbar = ({ user }) => {
 
   return (
     <div className='bg-olive-dark h-16 flex opac items-center px-10 gap-x-3 fixed top-0 w-full z-10 shadow-xl'>
-      <h1 className='text-beige text-2xl font-bold'>KuboHub</h1>
+      <div className="flex items-center gap-x-3">
+        <img 
+          src={logo} 
+          alt="KuboHub Logo" 
+          className="h-12 w-12 object-contain"
+        />
+        <h1 className="text-beige text-2xl font-bold">KuboHub</h1>
+      </div>
+      
 
       <div className='flex items-center text-center ml-auto justify-between gap-x-4'>
         <button className='font-semibold text-beige px-4 py-2 rounded hover:bg-grayish duration-300'>Homes</button>   

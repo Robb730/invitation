@@ -2,13 +2,15 @@ import React, { useEffect, useState, useRef } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 
-const Listings = ({ user }) => {
+const Listings = ({ user}) => {
   const [listings, setListings] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
     inactive: 0,
+    draft: 0,
   });
+  const [filter, setFilter] = useState("Active");
 
   useEffect(() => {
     const fetchUserListings = async () => {
@@ -27,11 +29,12 @@ const Listings = ({ user }) => {
         setListings(listingsData);
 
         // Compute stats
-        const total = listingsData.length;
-        const active = listingsData.filter((l) => l.status === "Active").length;
-        const inactive = listingsData.filter((l) => l.status !== "Active").length;
-
-        setStats({ total, active, inactive });
+        setStats({
+          total: listingsData.length,
+          active: listingsData.filter((l) => l.status === "Active").length,
+          inactive: listingsData.filter((l) => l.status === "Inactive").length,
+          draft: listingsData.filter((l) => l.status === "Draft").length,
+        });
       } catch (error) {
         console.error("Error fetching listings:", error);
       }
@@ -40,45 +43,66 @@ const Listings = ({ user }) => {
     fetchUserListings();
   }, [user]);
 
+  const filteredListings = listings.filter((l) => l.status === filter);
+
   return (
     <div className="min-h-screen bg-beige p-10">
       {/* Header */}
       <div className="flex justify-between items-center mt-0 mb-8">
         <h1 className="text-3xl font-semibold text-olive-dark">My Listings</h1>
-        <button className="bg-olive-dark text-white px-5 py-2 rounded-lg font-medium shadow-md hover:bg-olive transition duration-300">
+        <button
+          className="bg-olive-dark text-white px-5 py-2 rounded-lg font-medium shadow-md hover:bg-olive transition duration-300"
+           
+        >
           + Add New Listing
         </button>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-        <div className="bg-white/60 backdrop-blur-md border border-white/30 rounded-2xl p-6 text-center shadow-md">
-          <h3 className="text-xl font-semibold text-olive-dark">Total Listings</h3>
-          <p className="text-3xl font-bold text-olive-dark mt-2">{stats.total}</p>
-        </div>
-
-        <div className="bg-green-50 border border-green-100 rounded-2xl p-6 text-center shadow-md">
-          <h3 className="text-xl font-semibold text-green-800">Active Listings</h3>
-          <p className="text-3xl font-bold text-green-700 mt-2">{stats.active}</p>
-        </div>
-
-        <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center shadow-md">
-          <h3 className="text-xl font-semibold text-red-800">Inactive Listings</h3>
-          <p className="text-3xl font-bold text-red-700 mt-2">{stats.inactive}</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-10">
+        <StatsCard
+          title="Total Listings"
+          count={stats.total}
+          bg="bg-white/60"
+          text="text-olive-dark"
+        />
+        <StatsCard
+          title="Active Listings"
+          count={stats.active}
+          bg="bg-green-50"
+          text="text-green-800"
+          onClick={() => setFilter("Active")}
+        />
+        <StatsCard
+          title="Inactive Listings"
+          count={stats.inactive}
+          bg="bg-red-50"
+          text="text-red-800"
+          onClick={() => setFilter("Inactive")}
+        />
+        <StatsCard
+          title="Draft Listings"
+          count={stats.draft}
+          bg="bg-yellow-100"
+          text="text-yellow-800"
+          onClick={() => setFilter("Draft")}
+        />
       </div>
 
       {/* Listings Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {listings.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
-        ))}
-      </div>
-
-      {/* Empty state */}
-      {listings.length === 0 && (
+      {filteredListings.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {filteredListings.map((listing) => (
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              
+            />
+          ))}
+        </div>
+      ) : (
         <div className="text-center text-gray-600 mt-20">
-          <p>No listings found. Click “Add New Listing” to create one.</p>
+          <p>No {filter.toLowerCase()} listings found.</p>
         </div>
       )}
     </div>
@@ -87,7 +111,8 @@ const Listings = ({ user }) => {
 
 export default Listings;
 
-const ListingCard = ({ listing }) => {
+// ----- Listing Card -----
+const ListingCard = ({ listing, onEdit }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const intervalRef = useRef(null);
@@ -102,9 +127,15 @@ const ListingCard = ({ listing }) => {
     } else {
       clearInterval(intervalRef.current);
     }
-
     return () => clearInterval(intervalRef.current);
   }, [isHovered, images]);
+
+  // Determine badge color
+  const statusColor = {
+    Active: "bg-green-100 text-green-700",
+    Inactive: "bg-gray-300 text-gray-700",
+    Draft: "bg-yellow-100 text-yellow-800",
+  }[listing.status] || "bg-gray-300 text-gray-700";
 
   return (
     <div
@@ -135,19 +166,27 @@ const ListingCard = ({ listing }) => {
       <p className="text-sm text-olive-dark/90 mt-2 font-medium">₱{listing.price}</p>
 
       <div className="flex justify-between items-center mt-4">
-        <span
-          className={`${
-            listing.status === "Active"
-              ? "bg-green-100 text-green-700"
-              : "bg-gray-300 text-gray-700"
-          } px-3 py-1 rounded-full text-xs font-medium`}
-        >
+        <span className={`${statusColor} px-3 py-1 rounded-full text-xs font-medium`}>
           {listing.status}
         </span>
-        <button className="text-sm font-medium text-olive-dark hover:underline">
+        <button
+          className="text-sm font-medium text-olive-dark hover:underline"
+          onClick={onEdit}
+        >
           Edit
         </button>
       </div>
     </div>
   );
 };
+
+// ----- Stats Card -----
+const StatsCard = ({ title, count, bg, text, onClick }) => (
+  <div
+    className={`${bg} border border-white/30 rounded-2xl p-6 text-center shadow-md w-52 cursor-pointer`}
+    onClick={onClick}
+  >
+    <h3 className={`text-xl font-semibold ${text}`}>{title}</h3>
+    <p className={`text-3xl font-bold ${text} mt-2`}>{count}</p>
+  </div>
+);

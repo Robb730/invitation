@@ -27,6 +27,9 @@ const HostNav = ({ user }) => {
   const [images, setImages] = useState([]) // for storing selected files
   const [uploading, setUploading] = useState(false)
 
+  const [promoCode, setPromoCode] = useState("")
+  const [discount, setDiscount] = useState("")
+
   // Fetch user info
   useEffect(() => {
     const fetchUserData = async () => {
@@ -91,6 +94,52 @@ const uploadToImgBB = async (file) => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const handleSaveDraft = async (e) => {
+    e.preventDefault()
+    if (!user) return alert("You must be logged in.")
+
+    if (images.length === 0) {
+      return alert("Please add at least one image.")
+    }
+
+    if (images.length > 4) {
+      return alert("You can upload a maximum of 4 images.")
+    }
+
+    try {
+      
+      const uploadedURLs = await Promise.all(images.map(img => uploadToImgBB(img)))
+      const status = "Draft"
+
+      await addDoc(collection(db, "listings"), {
+        title,
+        location,
+        category,
+        status,
+        price,
+        description,
+        images: uploadedURLs,
+        promoCode: promoCode || null,
+        discount: discount ? parseFloat(discount) : null,
+        createdAt: serverTimestamp(),
+        hostId: user.uid,
+      })
+
+      alert("Listing saved as draft!")
+      setShowModal(false)
+      setTitle("")
+      setLocation("")
+      setPrice("")
+      setCategory("")
+      setDescription("")
+      setImages([])
+    } catch (err) {
+      alert("Error adding listing: " + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   // Handle new listing
   const handleAddListing = async (e) => {
     e.preventDefault()
@@ -111,14 +160,16 @@ const uploadToImgBB = async (file) => {
 
       await addDoc(collection(db, "listings"), {
         title,
-        location,
-        category,
-        status,
-        price,
-        description,
-        images: uploadedURLs,
-        createdAt: serverTimestamp(),
-        hostId: user.uid,
+  location,
+  category,
+  status,
+  price,
+  description,
+  images: uploadedURLs,
+  promoCode: promoCode || null,
+  discount: discount ? parseFloat(discount) : null,
+  createdAt: serverTimestamp(),
+  hostId: user.uid,
       })
 
       alert("Listing added successfully!")
@@ -210,6 +261,22 @@ const uploadToImgBB = async (file) => {
                 className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
                 required
               />
+              <input
+              type="text"
+              placeholder="Enter promo code"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none w-full"
+            />
+            <input
+            type="number"
+            placeholder="Enter discount (e.g. 10 for 10%)"
+            min="1"
+            max="100"
+            value={discount}
+            onChange={(e) => setDiscount(e.target.value)}
+            className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none w-full"
+          />
               <textarea
                 placeholder="Description"
                 value={description}
@@ -250,6 +317,9 @@ const uploadToImgBB = async (file) => {
                   className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition"
                 >
                   Cancel
+                </button>
+                <button onClick = {handleSaveDraft} className = "px-5 py-2 rounded-lg text-white bg-olive-dark hover:bg-olive">
+                  Save as draft
                 </button>
                 <button
                   type="submit"
