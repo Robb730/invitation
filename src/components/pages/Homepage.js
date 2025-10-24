@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { signOut, onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../firebaseConfig";
 import Navbar from "./homepage-comp/Navbar";
 import Search from "./homepage-comp/Search";
@@ -19,14 +19,7 @@ const Homepage = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      alert("Logged out successfully");
-    } catch (error) {
-      alert(error.message);
-    }
-  };
+  
 
   // simulate clicking a listing
   const handleListingClick = (listingId) => {

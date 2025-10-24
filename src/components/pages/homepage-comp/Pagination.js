@@ -1,18 +1,16 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { collection, getDocs, query, orderBy, doc, getDoc } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 
-// 🔹 SlideshowCard (same as before, slightly improved)
-// 🔹 SlideshowCard (modern layout)
-
+// 🔹 SlideshowCard Component
 const SlideshowCard = ({ listing, onListingClick }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const intervalRef = useRef(null);
 
-  const images = Array.isArray(listing.images)
-    ? listing.images
-    : [listing.images];
+   const images = useMemo(() => {
+    return Array.isArray(listing.images) ? listing.images : [listing.images];
+  }, [listing.images]);
 
   useEffect(() => {
     if (isHovered && images.length > 1) {
@@ -23,7 +21,7 @@ const SlideshowCard = ({ listing, onListingClick }) => {
       clearInterval(intervalRef.current);
     }
     return () => clearInterval(intervalRef.current);
-  }, [isHovered, images]);
+  }, [isHovered, images.length]);
 
   return (
     <div
@@ -34,7 +32,7 @@ const SlideshowCard = ({ listing, onListingClick }) => {
         setCurrentImageIndex(0);
       }}
     >
-      {/* Image Section */}
+      {/* 🖼 Image Section */}
       <div className="h-[220px] w-full overflow-hidden">
         <img
           src={images[currentImageIndex]}
@@ -43,23 +41,28 @@ const SlideshowCard = ({ listing, onListingClick }) => {
         />
       </div>
 
-      {/* Info Section */}
+      {/* ℹ Info Section */}
       <div className="flex flex-col justify-between p-4 flex-grow">
         <div>
           <h3 className="text-lg font-semibold text-olive-dark leading-tight">
             {listing.title}
           </h3>
           <p className="text-sm text-gray-500 mt-1">{listing.location}</p>
+
           {listing.hostName && (
             <p className="text-xs text-gray-600 mt-2 italic">
-              Hosted by <span className="font-medium text-olive-dark">{listing.hostName}</span>
+              Hosted by{" "}
+              <span className="font-medium text-olive-dark">
+                {listing.hostName}
+              </span>
             </p>
           )}
         </div>
-        
 
         <div className="flex items-center justify-between mt-4">
-          <p className="text-lg font-bold text-olive-dark">₱{listing.price}</p>
+          <p className="text-lg font-bold text-olive-dark">
+            ₱{listing.price}
+          </p>
           <button
             onClick={() => onListingClick(listing.id)}
             className="bg-olive-dark text-white text-sm px-4 py-2 rounded-full hover:bg-olive duration-300"
@@ -72,8 +75,7 @@ const SlideshowCard = ({ listing, onListingClick }) => {
   );
 };
 
-
-// 🔹 Pagination (main component)
+// 🔹 Pagination Component
 const Pagination = ({ onListingClick }) => {
   const [listings, setListings] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,42 +93,43 @@ const Pagination = ({ onListingClick }) => {
           snapshot.docs.map(async (docSnap) => {
             const listing = { id: docSnap.id, ...docSnap.data() };
 
-            // 🔍 Look up the host's name in the "users" collection using hostID
+            // ✅ Fetch host info from users collection
             if (listing.hostId) {
-              const hostRef = doc(db, "users", listing.hostId);
-              const hostSnap = await getDoc(hostRef);
-              if (hostSnap.exists()) {
-                const hostData = hostSnap.data();
-                listing.hostName = hostData.fullName || hostData.name || "Unknown Host";
-              } else {
+              try {
+                const hostRef = doc(db, "users", listing.hostId);
+                const hostSnap = await getDoc(hostRef);
+                listing.hostName = hostSnap.exists()
+                  ? hostSnap.data().fullName || hostSnap.data().name || "Unknown Host"
+                  : "Unknown Host";
+              } catch {
                 listing.hostName = "Unknown Host";
               }
             } else {
               listing.hostName = "Unknown Host";
             }
-            
 
             return listing;
-          }))
+          })
+        );
 
-        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        const activeListings = listingsWithHosts.filter(listing => listing.status === "Active");
+        // ✅ Only show active listings
+        const activeListings = listingsWithHosts.filter(
+          (listing) => listing.status === "Active"
+        );
+
         setListings(activeListings);
-        
       } catch (error) {
         console.error("Error fetching listings:", error);
       }
     };
+
     fetchListings();
   }, []);
 
   // 🔸 Pagination logic
   const totalPages = Math.ceil(listings.length / listingsPerPage);
   const startIndex = (currentPage - 1) * listingsPerPage;
-  const currentListings = listings.slice(
-    startIndex,
-    startIndex + listingsPerPage
-  );
+  const currentListings = listings.slice(startIndex, startIndex + listingsPerPage);
 
   return (
     <div className="w-full">
@@ -135,26 +138,24 @@ const Pagination = ({ onListingClick }) => {
         <h1 className="text-2xl font-semibold">Popular</h1>
       </div>
 
-      {/* Listings grid (3 columns × 2 rows) */}
-      {/* Listings grid (3 columns, 2 rows) */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10 px-10 py-6 justify-items-center">
-  {currentListings.length > 0 ? (
-    currentListings.map((listing) => (
-      <SlideshowCard
-        key={listing.id}
-        listing={listing}
-        onListingClick={onListingClick}
-      />
-    ))
-  ) : (
-    <p className="text-gray-500 text-center w-full mt-10">
-      No listings found.
-    </p>
-  )}
-</div>
+      {/* Listings Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10 px-10 py-6 justify-items-center">
+        {currentListings.length > 0 ? (
+          currentListings.map((listing) => (
+            <SlideshowCard
+              key={listing.id}
+              listing={listing}
+              onListingClick={onListingClick}
+            />
+          ))
+        ) : (
+          <p className="text-gray-500 text-center w-full mt-10">
+            No listings found.
+          </p>
+        )}
+      </div>
 
-
-      {/* Pagination buttons */}
+      {/* Pagination Buttons */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 py-6">
           {Array.from({ length: totalPages }).map((_, index) => (

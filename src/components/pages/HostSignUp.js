@@ -3,7 +3,7 @@ import { useState } from "react";
 import bg from "./hostpage-comp/images/hostsignup2.jpg";
 import { Link } from "react-router-dom";
 import axios from "axios"; // ✅ FIX: Import axios
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword} from "firebase/auth";
 import { auth, db } from "../../firebaseConfig";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -14,7 +14,7 @@ const HostSignUp = () => {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [propertyDetails, setPropertyDetails] = useState("");
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  
   const [showPayment, setShowPayment] = useState(false);
   const [userId, setUserId] = useState(null);
 
@@ -107,7 +107,7 @@ const HostSignUp = () => {
                   }}
                   onApprove={async (data, actions) => {
                     await actions.order.capture();
-                    setPaymentSuccess(true);
+                    
 
                     // ✅ FIX: Only use userId, no userCredential here
                     await setDoc(doc(db, "users", userId), { subscribed: true }, { merge: true });

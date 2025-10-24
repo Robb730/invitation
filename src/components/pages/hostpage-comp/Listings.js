@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 
-const Listings = ({ user}) => {
+// ----- Main Component -----
+const Listings = ({ user }) => {
   const [listings, setListings] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -12,6 +13,7 @@ const Listings = ({ user}) => {
   });
   const [filter, setFilter] = useState("Active");
 
+  // ✅ Fetch listings owned by current user
   useEffect(() => {
     const fetchUserListings = async () => {
       if (!user) return;
@@ -21,14 +23,14 @@ const Listings = ({ user}) => {
         const q = query(listingsRef, where("hostId", "==", user.uid));
         const querySnapshot = await getDocs(q);
 
-        const listingsData = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        const listingsData = querySnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
         }));
 
         setListings(listingsData);
 
-        // Compute stats
+        // 🔹 Compute statistics
         setStats({
           total: listingsData.length,
           active: listingsData.filter((l) => l.status === "Active").length,
@@ -43,16 +45,16 @@ const Listings = ({ user}) => {
     fetchUserListings();
   }, [user]);
 
+  // 🔹 Filter listings by selected status
   const filteredListings = listings.filter((l) => l.status === filter);
 
   return (
     <div className="min-h-screen bg-beige p-10">
       {/* Header */}
-      <div className="flex justify-between items-center mt-0 mb-8">
+      <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-semibold text-olive-dark">My Listings</h1>
         <button
           className="bg-olive-dark text-white px-5 py-2 rounded-lg font-medium shadow-md hover:bg-olive transition duration-300"
-           
         >
           + Add New Listing
         </button>
@@ -93,11 +95,7 @@ const Listings = ({ user}) => {
       {filteredListings.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {filteredListings.map((listing) => (
-            <ListingCard
-              key={listing.id}
-              listing={listing}
-              
-            />
+            <ListingCard key={listing.id} listing={listing} />
           ))}
         </div>
       ) : (
@@ -109,16 +107,19 @@ const Listings = ({ user}) => {
   );
 };
 
-export default Listings;
-
 // ----- Listing Card -----
 const ListingCard = ({ listing, onEdit }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const intervalRef = useRef(null);
 
-  const images = Array.isArray(listing.images) ? listing.images : [listing.images];
+  // ✅ Keep image array stable between renders
+  const images = useMemo(() => {
+    if (!listing.images) return [];
+    return Array.isArray(listing.images) ? listing.images : [listing.images];
+  }, [listing.images]);
 
+  // ✅ Slideshow effect (no ESLint warnings)
   useEffect(() => {
     if (isHovered && images.length > 1) {
       intervalRef.current = setInterval(() => {
@@ -128,14 +129,14 @@ const ListingCard = ({ listing, onEdit }) => {
       clearInterval(intervalRef.current);
     }
     return () => clearInterval(intervalRef.current);
-  }, [isHovered, images]);
+  }, [isHovered, images.length]);
 
-  // Determine badge color
-  const statusColor = {
-    Active: "bg-green-100 text-green-700",
-    Inactive: "bg-gray-300 text-gray-700",
-    Draft: "bg-yellow-100 text-yellow-800",
-  }[listing.status] || "bg-gray-300 text-gray-700";
+  const statusColor =
+    {
+      Active: "bg-green-100 text-green-700",
+      Inactive: "bg-gray-300 text-gray-700",
+      Draft: "bg-yellow-100 text-yellow-800",
+    }[listing.status] || "bg-gray-300 text-gray-700";
 
   return (
     <div
@@ -146,24 +147,36 @@ const ListingCard = ({ listing, onEdit }) => {
         setCurrentImageIndex(0);
       }}
     >
-      {/* Image Slideshow */}
+      {/* 🖼 Slideshow */}
       <div className="relative w-full h-48 rounded-xl overflow-hidden">
-        {images.map((img, idx) => (
-          <img
-            key={idx}
-            src={img}
-            alt={listing.title}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-              idx === currentImageIndex ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        ))}
+        {images.length > 0 ? (
+          images.map((img, idx) => (
+            <img
+              key={idx}
+              src={img}
+              alt={listing.title}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
+                idx === currentImageIndex ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          ))
+        ) : (
+          <div className="flex items-center justify-center w-full h-full bg-gray-200 text-gray-500">
+            No image
+          </div>
+        )}
       </div>
 
-      {/* Listing Info */}
-      <h3 className="text-lg font-semibold text-olive-dark mt-4">{listing.title}</h3>
-      <p className="text-sm text-olive-dark/70 mt-1">{listing.location}</p>
-      <p className="text-sm text-olive-dark/90 mt-2 font-medium">₱{listing.price}</p>
+      {/* ℹ Listing Info */}
+      <h3 className="text-lg font-semibold text-olive-dark mt-4">
+        {listing.title || "Untitled Listing"}
+      </h3>
+      <p className="text-sm text-olive-dark/70 mt-1">
+        {listing.location || "No location"}
+      </p>
+      <p className="text-sm text-olive-dark/90 mt-2 font-medium">
+        ₱{listing.price || "0"}
+      </p>
 
       <div className="flex justify-between items-center mt-4">
         <span className={`${statusColor} px-3 py-1 rounded-full text-xs font-medium`}>
@@ -190,3 +203,5 @@ const StatsCard = ({ title, count, bg, text, onClick }) => (
     <p className={`text-3xl font-bold ${text} mt-2`}>{count}</p>
   </div>
 );
+
+export default Listings;
