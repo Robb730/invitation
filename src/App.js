@@ -8,6 +8,7 @@ import ProtectedRoute from './components/pages/ProtectedRoute'
 import HostSignUp from './components/pages/HostSignUp'
 import Verified from './components/Verified'
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+import ListingDetails from './components/pages/ListingDetails';
 
 
 
@@ -21,6 +22,7 @@ function App() {
     {path: "/becomehost", element: <HostSignUp/>},
     {path: "/verified", element: <Verified/>},
     {path: "*", element: <NotFound/>},
+    { path: "/room/:id", element: <ListingDetails /> },
     {path: "/protected", element: <ProtectedRoute><Homepage/></ProtectedRoute>}
   ]);
   return (

@@ -202,39 +202,101 @@ const EditModal = ({ listing, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     title: listing.title || "",
     location: listing.location || "",
+    category: listing.category || "",
     price: listing.price || "",
+    priceType: listing.priceType || "per night",
+    guests: listing.guests || "",
+    bedrooms: listing.bedrooms || "",
+    bathrooms: listing.bathrooms || "",
+    promoCode: listing.promoCode || "",
+    discount: listing.discount || "",
+    description: listing.description || "",
     status: listing.status || "Active",
+    images: listing.images || [],
   });
+  const [newImages, setNewImages] = useState([]); // newly added files
+  const [uploading, setUploading] = useState(false);
+
+  const uploadToCloudinary = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "kubo_unsigned");
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload`,
+    { method: "POST", body: formData }
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || "Upload failed");
+  return data.secure_url;
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = () => {
-    onSave({ ...listing, ...formData });
+  const handleDeleteImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
   };
-  const handleDelete = async () => {
-  if (window.confirm("Are you sure you want to delete this listing?")) {
-    try {
-      const listingRef = doc(db, "listings", listing.id);
-      await deleteDoc(listingRef);
-      alert("Listing deleted successfully!");
 
-      onClose();
-      window.dispatchEvent(new Event("refreshListings")); // 🔔 trigger refresh
-    } catch (error) {
-      console.error("Error deleting listing:", error);
-      alert("Failed to delete listing.");
+  const handleNewImages = (e) => {
+    const files = Array.from(e.target.files);
+    const totalImages = formData.images.length + files.length;
+    if (totalImages > 4) {
+      alert("You can upload up to 4 images only.");
+      return;
     }
-  }
-};
+    setNewImages(files);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setUploading(true);
+      let uploadedURLs = [];
+
+      // Upload new images if any
+      if (newImages.length > 0) {
+        uploadedURLs = await Promise.all(newImages.map((img) => uploadToCloudinary(img)));
+      }
+
+      const updatedListing = {
+        ...listing,
+        ...formData,
+        images: [...formData.images, ...uploadedURLs],
+      };
+
+      await onSave(updatedListing);
+      setUploading(false);
+    } catch (error) {
+      console.error("Error saving listing:", error);
+      alert("Error saving changes: " + error.message);
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this listing?")) {
+      try {
+        const listingRef = doc(db, "listings", listing.id);
+        await deleteDoc(listingRef);
+        alert("Listing deleted successfully!");
+        onClose();
+        window.dispatchEvent(new Event("refreshListings"));
+      } catch (error) {
+        console.error("Error deleting listing:", error);
+        alert("Failed to delete listing.");
+      }
+    }
+  };
 
 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm px-3">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-4 md:p-6 relative">
+      <div className="bg-white rounded-2xl shadow-lg w-full max-w-2xl p-4 md:p-6 relative overflow-y-auto max-h-[90vh]">
         <button
           className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl"
           onClick={onClose}
@@ -247,67 +309,195 @@ const EditModal = ({ listing, onClose, onSave }) => {
         </h2>
 
         <div className="flex flex-col gap-4">
-          <label for="title" className="font-medium text-olive-dark">
-            Title
-          </label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="Title"
-            className="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-olive/50"
-          />
-          <label for="location" className="font-medium text-olive-dark">
-            Location
-          </label>
-          <input
-            type="text"
-            name="location"
-            value={formData.location}
-            onChange={handleChange}
-            placeholder="Location"
-            className="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-olive/50"
-          />
-          <label for="price" className="font-medium text-olive-dark">
-            Price
-          </label>
-          <input
-            type="number"
-            name="price"
-            value={formData.price}
-            onChange={handleChange}
-            placeholder="Price"
-            className="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-olive/50"
-          />
-          <label for="status" className="font-medium text-olive-dark">
-            Status
-          </label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-            className="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-olive/50"
-          >
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Draft">Draft</option>
-          </select>
+          {/* Title and Location */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Title"
+              className="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-olive/50"
+            />
+            <input
+              type="text"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="Location"
+              className="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-olive/50"
+            />
+          </div>
 
-        <div className="flex justify-between mt-6">
+          {/* Category and Price */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-olive/50"
+            >
+              <option value="">Select Category</option>
+              <option value="Beachfront">Beachfront</option>
+              <option value="Cabin">Cabin</option>
+              <option value="Apartment">Apartment</option>
+              <option value="Resort">Resort</option>
+              <option value="Tiny Home">Tiny Home</option>
+              <option value="Villa">Villa</option>
+            </select>
 
-          <button
-            onClick={handleSubmit}
-            className="bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium"
-          >
-            Save Changes
-          </button>
-          <button
-            onClick={handleDelete}
-            className="bg-red-900 text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium"
-          >
-            Delete
-          </button>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                placeholder="Price"
+                className="w-2/3 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-olive/50"
+              />
+              <select
+                name="priceType"
+                value={formData.priceType}
+                onChange={handleChange}
+                className="w-1/3 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-olive/50"
+              >
+                <option value="per night">/ Night</option>
+                <option value="per week">/ Week</option>
+                <option value="per month">/ Month</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Guests, Bedrooms, Bathrooms */}
+          <div className="grid grid-cols-3 gap-3">
+            <input
+              type="number"
+              name="guests"
+              value={formData.guests}
+              onChange={handleChange}
+              placeholder="Guests"
+              min="1"
+              className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-olive/50"
+            />
+            <input
+              type="number"
+              name="bedrooms"
+              value={formData.bedrooms}
+              onChange={handleChange}
+              placeholder="Bedrooms"
+              min="0"
+              className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-olive/50"
+            />
+            <input
+              type="number"
+              name="bathrooms"
+              value={formData.bathrooms}
+              onChange={handleChange}
+              placeholder="Bathrooms"
+              min="0"
+              className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-olive/50"
+            />
+          </div>
+
+          {/* Promo & Discount */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              type="text"
+              name="promoCode"
+              value={formData.promoCode}
+              onChange={handleChange}
+              placeholder="Promo Code (optional)"
+              className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-olive/50"
+            />
+            <input
+              type="number"
+              name="discount"
+              value={formData.discount}
+              onChange={handleChange}
+              placeholder="Discount (%)"
+              min="1"
+              max="100"
+              className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-olive/50"
+            />
+          </div>
+
+          {/* Description */}
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            placeholder="Description"
+            rows="4"
+            className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-olive/50 resize-none"
+          ></textarea>
+
+          {/* Images */}
+          <div>
+            <label className="font-medium text-olive-dark mb-2 block">
+              Images (max 4)
+            </label>
+
+            {/* Existing Images */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+              {formData.images.map((img, idx) => (
+                <div key={idx} className="relative">
+                  <img
+                    src={img}
+                    alt="listing"
+                    className="h-24 w-full object-cover rounded-lg border"
+                  />
+                  <button
+                    onClick={() => handleDeleteImage(idx)}
+                    className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Upload New Images */}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleNewImages}
+              className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer bg-white"
+            />
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="font-medium text-olive-dark">Status</label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              className="border border-gray-300 rounded-lg p-2 w-full focus:ring-2 focus:ring-olive/50"
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="Draft">Draft</option>
+            </select>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={handleSubmit}
+              disabled={uploading}
+              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${
+                uploading ? "opacity-60 cursor-not-allowed" : ""
+              }`}
+            >
+              {uploading ? "Saving..." : "Save Changes"}
+            </button>
+            <button
+              onClick={handleDelete}
+              className="bg-red-900 text-white py-2 rounded-lg w-44 hover:bg-red-700 transition duration-300 font-medium"
+            >
+              Delete
+            </button>
           </div>
         </div>
       </div>

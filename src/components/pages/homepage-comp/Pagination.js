@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { collection, getDocs, query, orderBy, doc, getDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 import { db } from "../../../firebaseConfig";
+import {getAuth} from 'firebase/auth';
 
 // 🔹 SlideshowCard Component
 const SlideshowCard = ({ listing, onListingClick }) => {
@@ -78,10 +80,25 @@ const SlideshowCard = ({ listing, onListingClick }) => {
 };
 
 // 🔹 Pagination Component
-const Pagination = ({ onListingClick }) => {
+const Pagination = () => {
   const [listings, setListings] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const listingsPerPage = 6;
+  const navigate = useNavigate();
+
+  const handleListingClick = (listingId) => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  if (user) {
+    // ✅ User is logged in
+    navigate(`/room/${listingId}`);
+  } else {
+    // ⚠️ User not logged in — redirect to login
+    alert("Please log in to view listing details.");
+    navigate("/login");
+  }
+};
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -143,7 +160,7 @@ const Pagination = ({ onListingClick }) => {
             <SlideshowCard
               key={listing.id}
               listing={listing}
-              onListingClick={onListingClick}
+              onListingClick={handleListingClick}
             />
           ))
         ) : (

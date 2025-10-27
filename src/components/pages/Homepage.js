@@ -36,7 +36,7 @@ const Homepage = () => {
     <div className="bg-beige min-h-screen">
       <Navbar user={user}/>
       <Search user= {user}/>
-      <Pagination onListingClick={handleListingClick} />
+      <Pagination onListingClick={handleListingClick} user = {user} />
       <Footer/>
     </div>
   );

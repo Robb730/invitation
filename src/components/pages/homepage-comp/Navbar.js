@@ -1,12 +1,23 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect} from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+
 import { Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../../firebaseConfig'; // adjust path if needed
 import logo from './images/kubohublogo_beige.svg'
 
-const Navbar = ({ user }) => {
+const Navbar = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleAuthClick = async () => {
     if (user) {
