@@ -65,7 +65,9 @@ const SlideshowCard = ({ listing, onListingClick }) => {
 
         <div className="flex items-center justify-between mt-4">
           <p className="text-base sm:text-lg font-bold text-olive-dark">
-            ₱{listing.price}
+            ₱{listing.price} / {" "} <span className="font-medium text-gray-500 text-base">
+                {listing.priceType}
+              </span>
           </p>
           <button
             onClick={() => onListingClick(listing.id)}
