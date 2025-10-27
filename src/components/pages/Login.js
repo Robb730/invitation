@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   signInWithEmailAndPassword,
@@ -9,14 +9,19 @@ import { auth } from "../../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import bg from "./homepage-comp/images/forest-bg.jpg";
-import logo from "./homepage-comp/images/kubohublogo_beige.svg"; // adjust path
+import logo from "./homepage-comp/images/kubohublogo_beige.svg";
 import SplitText from "./homepage-comp/SplitText";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showAnimation, setShowAnimation] = useState(false);
   const navigate = useNavigate();
   const googleProvider = new GoogleAuthProvider();
+
+  useEffect(() => {
+    setShowAnimation(true);
+  }, []);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -31,7 +36,6 @@ const Login = () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
       await user.reload();
 
       if (user.emailVerified) {
@@ -56,44 +60,49 @@ const Login = () => {
     }
   };
 
-  const handleAnimationComplete = () => {
-  console.log('All letters have animated!');
-};
-
   return (
     <div
       className="min-h-screen flex flex-col md:flex-row bg-cover bg-center"
       style={{ backgroundImage: `url(${bg})` }}
     >
-      {/* LEFT SECTION */}
-      <div className="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-br from-olive-dark/70 to-black/60 text-beige backdrop-blur-md p-12">
-        <div className="text-center">
-          <img src={logo} alt="KuboHub Logo" className="w-28 mx-auto mb-6 drop-shadow-lg" />
-          <SplitText
-          text="Welcome Back 🌿"
-          className="text-5xl font-extrabold tracking-wide mb-4"
-          delay={100}
-          duration={0.6}
-          ease="power3.out"
-          splitType="chars"
-          from={{ opacity: 0, y: 40 }}
-          to={{ opacity: 1, y: 0 }}
-          threshold={0.1}
-          rootMargin="-100px"
-          textAlign="center"
-          onLetterAnimationComplete={handleAnimationComplete}
+      {/* LEFT SECTION - hidden on mobile */}
+      <div className="hidden md:flex flex-col justify-center items-center w-full md:w-1/2 bg-gradient-to-br from-olive-dark/80 to-black/60 text-beige backdrop-blur-md p-10">
+        <div className="text-center px-4">
+          <img
+            src={logo}
+            alt="KuboHub Logo"
+            className="w-24 mx-auto mb-6 drop-shadow-lg"
           />
-          <p className="text-lg text-beige/90 max-w-md mx-auto leading-relaxed">
-            Step into comfort again. Sign in to explore new stays, experiences, and hosts
-            across the islands — with the cozy touch of <span className="text-olive-light font-semibold">KuboHub</span>.
+
+          {showAnimation && (
+            <SplitText
+              text="Welcome Back 🌿"
+              className="text-4xl sm:text-5xl font-extrabold tracking-wide mb-4"
+              delay={100}
+              duration={0.6}
+              ease="power3.out"
+              splitType="chars"
+              from={{ opacity: 0, y: 40 }}
+              to={{ opacity: 1, y: 0 }}
+              threshold={0.1}
+              rootMargin="-100px"
+              textAlign="center"
+            />
+          )}
+
+          <p className="text-base sm:text-lg text-beige/90 max-w-md mx-auto leading-relaxed">
+            Step into comfort again. Sign in to explore new stays, experiences, and hosts across the islands — with the cozy touch of{" "}
+            <span className="text-olive-light font-semibold">KuboHub</span>.
           </p>
         </div>
       </div>
 
-      {/* RIGHT SECTION */}
-      <div className="flex justify-center items-center w-full md:w-1/2 bg-beige/95 backdrop-blur-xl p-6 sm:p-10">
-        <div className="bg-white/80 backdrop-blur-xl border border-olive/20 rounded-3xl shadow-2xl p-8 sm:p-10 w-full max-w-md transform hover:scale-[1.01] transition-all duration-300">
-          <h2 className="text-4xl font-bold text-center text-olive-dark mb-6">Login</h2>
+      {/* RIGHT SECTION (always visible, centered on mobile) */}
+      <div className="flex justify-center items-center w-full md:w-1/2 bg-white/90 md:bg-beige/95 backdrop-blur-xl p-6 sm:p-10">
+        <div className="bg-white/90 md:bg-white/80 backdrop-blur-xl border border-olive/20 rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-md transform hover:scale-[1.01] transition-all duration-300">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-olive-dark mb-6">
+            Login
+          </h2>
 
           <form
             onSubmit={(e) => {
@@ -103,32 +112,33 @@ const Login = () => {
             className="flex flex-col gap-4"
           >
             <input
-            id = "email"
+              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="text"
               placeholder="Email Address"
-              className="border border-olive/40 rounded-lg p-3 w-full focus:outline-none focus:ring-2 focus:ring-olive/60 placeholder-gray-500 text-gray-800 transition"
+              className="border border-olive/40 rounded-lg p-3 w-full focus:outline-none focus:ring-2 focus:ring-olive/60 placeholder-gray-500 text-gray-800 transition text-sm sm:text-base"
             />
             <input
-            id = "password"
+              id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"
               placeholder="Password"
-              className="border border-olive/40 rounded-lg p-3 w-full focus:outline-none focus:ring-2 focus:ring-olive/60 placeholder-gray-500 text-gray-800 transition"
+              className="border border-olive/40 rounded-lg p-3 w-full focus:outline-none focus:ring-2 focus:ring-olive/60 placeholder-gray-500 text-gray-800 transition text-sm sm:text-base"
             />
 
             <button
-              type = "submit"
-              className="bg-olive-dark text-white rounded-lg p-3 w-full mt-2 font-semibold hover:bg-olive transition-all duration-500 shadow-lg hover:shadow-xl"
+              type="submit"
+              className="bg-olive-dark text-white rounded-lg p-3 w-full mt-2 font-semibold hover:bg-olive transition-all duration-500 shadow-lg hover:shadow-xl text-sm sm:text-base"
             >
               Sign In
             </button>
 
             <button
+              type="button"
               onClick={handleGoogleSignIn}
-              className="flex justify-center items-center gap-3 border border-olive/40 bg-white text-olive-dark font-semibold rounded-lg p-3 w-full hover:bg-olive hover:text-white transition-all duration-500 shadow-md"
+              className="flex justify-center items-center gap-3 border border-olive/40 bg-white text-olive-dark font-semibold rounded-lg p-3 w-full hover:bg-olive hover:text-white transition-all duration-500 shadow-md text-sm sm:text-base"
             >
               <svg
                 className="w-5 h-5"
@@ -155,7 +165,7 @@ const Login = () => {
               Continue with Google
             </button>
 
-            <div className="text-center mt-6 text-gray-700">
+            <div className="text-center mt-6 text-gray-700 text-sm sm:text-base">
               <p>
                 Don’t have an account?{" "}
                 <Link to="/signup">

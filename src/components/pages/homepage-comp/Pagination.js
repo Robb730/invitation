@@ -8,7 +8,7 @@ const SlideshowCard = ({ listing, onListingClick }) => {
   const [isHovered, setIsHovered] = useState(false);
   const intervalRef = useRef(null);
 
-   const images = useMemo(() => {
+  const images = useMemo(() => {
     return Array.isArray(listing.images) ? listing.images : [listing.images];
   }, [listing.images]);
 
@@ -25,7 +25,7 @@ const SlideshowCard = ({ listing, onListingClick }) => {
 
   return (
     <div
-      className="bg-white w-[440px] rounded-2xl shadow-lg hover:shadow-2xl hover:scale-[1.03] duration-300 overflow-hidden cursor-pointer flex flex-col"
+      className="bg-white w-full max-w-[440px] rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] duration-300 overflow-hidden cursor-pointer flex flex-col"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
@@ -33,7 +33,7 @@ const SlideshowCard = ({ listing, onListingClick }) => {
       }}
     >
       {/* 🖼 Image Section */}
-      <div className="h-[220px] w-full overflow-hidden">
+      <div className="h-48 sm:h-56 md:h-60 w-full overflow-hidden">
         <img
           src={images[currentImageIndex]}
           alt={listing.title}
@@ -42,15 +42,17 @@ const SlideshowCard = ({ listing, onListingClick }) => {
       </div>
 
       {/* ℹ Info Section */}
-      <div className="flex flex-col justify-between p-4 flex-grow">
+      <div className="flex flex-col justify-between p-3 sm:p-4 flex-grow">
         <div>
-          <h3 className="text-lg font-semibold text-olive-dark leading-tight">
+          <h3 className="text-base sm:text-lg font-semibold text-olive-dark leading-tight line-clamp-1">
             {listing.title}
           </h3>
-          <p className="text-sm text-gray-500 mt-1">{listing.location}</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1 line-clamp-1">
+            {listing.location}
+          </p>
 
           {listing.hostName && (
-            <p className="text-xs text-gray-600 mt-2 italic">
+            <p className="text-xs text-gray-600 mt-2 italic line-clamp-1">
               Hosted by{" "}
               <span className="font-medium text-olive-dark">
                 {listing.hostName}
@@ -60,12 +62,12 @@ const SlideshowCard = ({ listing, onListingClick }) => {
         </div>
 
         <div className="flex items-center justify-between mt-4">
-          <p className="text-lg font-bold text-olive-dark">
+          <p className="text-base sm:text-lg font-bold text-olive-dark">
             ₱{listing.price}
           </p>
           <button
             onClick={() => onListingClick(listing.id)}
-            className="bg-olive-dark text-white text-sm px-4 py-2 rounded-full hover:bg-olive duration-300"
+            className="bg-olive-dark text-white text-xs sm:text-sm px-3 py-2 rounded-full hover:bg-olive duration-300"
           >
             View Details
           </button>
@@ -79,7 +81,6 @@ const SlideshowCard = ({ listing, onListingClick }) => {
 const Pagination = ({ onListingClick }) => {
   const [listings, setListings] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-
   const listingsPerPage = 6;
 
   useEffect(() => {
@@ -93,7 +94,6 @@ const Pagination = ({ onListingClick }) => {
           snapshot.docs.map(async (docSnap) => {
             const listing = { id: docSnap.id, ...docSnap.data() };
 
-            // ✅ Fetch host info from users collection
             if (listing.hostId) {
               try {
                 const hostRef = doc(db, "users", listing.hostId);
@@ -112,7 +112,6 @@ const Pagination = ({ onListingClick }) => {
           })
         );
 
-        // ✅ Only show active listings
         const activeListings = listingsWithHosts.filter(
           (listing) => listing.status === "Active"
         );
@@ -126,7 +125,6 @@ const Pagination = ({ onListingClick }) => {
     fetchListings();
   }, []);
 
-  // 🔸 Pagination logic
   const totalPages = Math.ceil(listings.length / listingsPerPage);
   const startIndex = (currentPage - 1) * listingsPerPage;
   const currentListings = listings.slice(startIndex, startIndex + listingsPerPage);
@@ -134,12 +132,12 @@ const Pagination = ({ onListingClick }) => {
   return (
     <div className="w-full">
       {/* Header */}
-      <div className="flex items-center px-14 py-4">
-        <h1 className="text-2xl font-semibold">Popular</h1>
+      <div className="flex items-center justify-center sm:justify-start px-6 sm:px-14 py-4">
+        <h1 className="text-xl sm:text-2xl font-semibold">Popular</h1>
       </div>
 
       {/* Listings Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10 px-10 py-6 justify-items-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4 sm:px-10 py-6 justify-items-center">
         {currentListings.length > 0 ? (
           currentListings.map((listing) => (
             <SlideshowCard
@@ -157,12 +155,12 @@ const Pagination = ({ onListingClick }) => {
 
       {/* Pagination Buttons */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 py-6">
+        <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 py-6">
           {Array.from({ length: totalPages }).map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentPage(index + 1)}
-              className={`px-4 py-2 rounded-full font-semibold ${
+              className={`px-3 sm:px-4 py-2 rounded-full font-semibold text-sm sm:text-base ${
                 currentPage === index + 1
                   ? "bg-olive-dark text-white"
                   : "bg-gray-300 text-gray-700 hover:bg-gray-400"

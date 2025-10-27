@@ -20,7 +20,7 @@ const Dashboard = () => {
       <h1 className="text-3xl font-semibold text-olive-dark mb-8">Dashboard</h1>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         {stats.map((stat, idx) => (
           <div
             key={idx}
@@ -64,7 +64,7 @@ const Dashboard = () => {
       {/* Listings */}
       <div className="mt-12">
         <h2 className="text-2xl font-semibold text-olive-dark mb-4">My Listings</h2>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {listings.map((listing, idx) => (
             <div
               key={idx}
