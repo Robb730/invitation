@@ -2,6 +2,12 @@ import React, { useState, useRef, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../../../firebaseConfig";
 import { useNavigate } from "react-router-dom";
+
+
+import "leaflet/dist/leaflet.css";
+
+import MapSection from "../hostpage-comp/MapSection";
+
 import {
   doc,
   getDoc,
@@ -18,6 +24,10 @@ const HostNav = ({ user, toggleSidebar }) => {
   const [fullname, setFullName] = useState("");
   const [profile, setProfile] = useState("");
 
+  //map container
+  
+
+
   // Modal form states
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
@@ -33,6 +43,12 @@ const HostNav = ({ user, toggleSidebar }) => {
   const [guests, setGuests] = useState("");
   const [bedrooms, setBedrooms] = useState("");
   const [bathrooms, setBathrooms] = useState("");
+
+  const [lat, setLat] = useState(14.5995); // default center (e.g., Baliwag)
+  const [lng, setLng] = useState(120.9842);
+  
+  
+
 
 
   // 🟢 Fetch user info (name + profile)
@@ -126,6 +142,8 @@ const HostNav = ({ user, toggleSidebar }) => {
         discount: discount ? parseFloat(discount) : null,
         createdAt: serverTimestamp(),
         hostId: user.uid,
+        latitude: lat,
+        longitude: lng,
       });
 
       alert("Listing saved as draft!");
@@ -163,6 +181,9 @@ const HostNav = ({ user, toggleSidebar }) => {
         discount: discount ? parseFloat(discount) : null,
         createdAt: serverTimestamp(),
         hostId: user.uid,
+
+        latitude: lat,
+        longitude: lng,
       });
 
       alert("Listing published successfully!");
@@ -256,178 +277,195 @@ const HostNav = ({ user, toggleSidebar }) => {
         Fill in all the details to make your property stand out.
       </p>
 
-      <form onSubmit={handleAddListing} className="flex flex-col gap-4">
-        {/* Title and Location */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            type="text"
-            placeholder="Property Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-            required
-          />
-          <input
-            type="text"
-            placeholder="Location (e.g. Tagaytay, Batangas)"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-            required
-          />
-        </div>
+      <form onSubmit={handleAddListing} className="flex flex-col gap-5">
+  {/* 🏡 Title */}
+  <div>
+    <label className="block text-sm font-medium text-olive-dark mb-1">Property Title</label>
+    <input
+      type="text"
+      placeholder="e.g., Cozy Cabin near the Beach"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+      className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+      required
+    />
+  </div>
 
-        {/* Category and Price Type */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-            required
-          >
-            <option value="">Select Category</option>
-            <option value="Beachfront">Beachfront</option>
-            <option value="Cabin">Cabin</option>
-            <option value="Apartment">Apartment</option>
-            <option value="Resort">Resort</option>
-            <option value="Tiny Home">Tiny Home</option>
-            <option value="Villa">Villa</option>
-          </select>
-
-          <div className="flex gap-2">
-            <input
-              type="number"
-              placeholder="Price"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="w-2/3 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-              required
-            />
-            <select
-              className="w-1/3 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-              onChange={(e) => setPriceType(e.target.value)}
-              required
-            >
-              <option value="per night">/ Night</option>
-              <option value="per week">/ Week</option>
-              <option value="per month">/ Month</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Guests, Bedrooms, Bathrooms */}
-        <div className="grid grid-cols-3 gap-4">
-          <input
-            type="number"
-            placeholder="Guests"
-            min="1"
-            value={guests}
-            onChange={(e) => setGuests(e.target.value)}
-            className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-          />
-          <input
-            type="number"
-            placeholder="Bedrooms"
-            min="0"
-            value={bedrooms}
-            onChange={(e) => setBedrooms(e.target.value)}
-            className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-          />
-          <input
-            type="number"
-            placeholder="Bathrooms"
-            min="0"
-            value={bathrooms}
-            onChange={(e) => setBathrooms(e.target.value)}
-            className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-          />
-        </div>
-
-        {/* Promo & Discount */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            type="text"
-            placeholder="Promo Code (optional)"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value)}
-            className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-          />
-          <input
-            type="number"
-            placeholder="Discount (%)"
-            min="1"
-            max="100"
-            value={discount}
-            onChange={(e) => setDiscount(e.target.value)}
-            className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-          />
-        </div>
-
-        {/* Description */}
-        <textarea
-          placeholder="Describe your property..."
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows="4"
-          className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none resize-none"
-          required
+  {/* 📍 Location Picker */}
+  <div>
+    <label className="block text-sm font-medium text-olive-dark mb-1">
+      Select Property Location
+    </label>
+    <div className="rounded-xl border border-gray-300 overflow-hidden">
+      <div style={{ height: "250px", width: "100%" }}>
+        <MapSection
+          lat={lat}
+          lng={lng}
+          setLat={setLat}
+          setLng={setLng}
+          setSelectedAddress={setLocation}
         />
+      </div>
+    </div>
+    <p className="text-sm text-gray-700 mt-2">
+      📌 Coordinates: {lat.toFixed(4)}, {lng.toFixed(4)}
+    </p>
+    <p className="text-sm text-gray-500 italic">
+      🗺️ {location || "Click on the map to choose a location"}
+    </p>
+  </div>
 
-        {/* Image Upload */}
-        <div>
-          <label className="block text-sm font-medium text-olive-dark mb-2">
-            Upload Images (max 4)
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => setImages([...e.target.files].slice(0, 4))}
-            className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer bg-white focus:ring-2 focus:ring-olive-dark"
+  {/* 🏷️ Category & Price */}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <select
+      value={category}
+      onChange={(e) => setCategory(e.target.value)}
+      className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+      required
+    >
+      <option value="">Select Category</option>
+      <option value="Beachfront">Beachfront</option>
+      <option value="Cabin">Cabin</option>
+      <option value="Apartment">Apartment</option>
+      <option value="Resort">Resort</option>
+      <option value="Tiny Home">Tiny Home</option>
+      <option value="Villa">Villa</option>
+    </select>
+
+    <div className="flex gap-2">
+      <input
+        type="number"
+        placeholder="Price"
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
+        className="w-2/3 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+        required
+      />
+      <select
+        className="w-1/3 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+        value={priceType}
+        onChange={(e) => setPriceType(e.target.value)}
+      >
+        <option value="per night">/ Night</option>
+        <option value="per week">/ Week</option>
+        <option value="per month">/ Month</option>
+      </select>
+    </div>
+  </div>
+
+  {/* Promo Code & Discount */}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <input
+      type="text"
+      placeholder="Promo Code (optional)"
+      value={promoCode}
+      onChange={(e) => setPromoCode(e.target.value)}
+      className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+    />
+    <input
+      type="number"
+      placeholder="Discount (%)"
+      min="1"
+      max="100"
+      value={discount}
+      onChange={(e) => setDiscount(e.target.value)}
+      className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+    />
+  </div>
+
+  {/* 👥 Details */}
+  <div className="grid grid-cols-3 gap-4">
+    <input
+      type="number"
+      placeholder="Guests"
+      min="1"
+      value={guests}
+      onChange={(e) => setGuests(e.target.value)}
+      className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+    />
+    <input
+      type="number"
+      placeholder="Bedrooms"
+      min="0"
+      value={bedrooms}
+      onChange={(e) => setBedrooms(e.target.value)}
+      className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+    />
+    <input
+      type="number"
+      placeholder="Bathrooms"
+      min="0"
+      value={bathrooms}
+      onChange={(e) => setBathrooms(e.target.value)}
+      className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+    />
+  </div>
+
+  {/* ✨ Description */}
+  <textarea
+    placeholder="Describe your property..."
+    value={description}
+    onChange={(e) => setDescription(e.target.value)}
+    rows="3"
+    className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none resize-none"
+    required
+  />
+
+  {/* 🖼️ Images */}
+  <div>
+    <label className="block text-sm font-medium text-olive-dark mb-2">
+      Upload Images (max 4)
+    </label>
+    <input
+      type="file"
+      accept="image/*"
+      multiple
+      onChange={(e) => setImages([...e.target.files].slice(0, 4))}
+      className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer bg-white focus:ring-2 focus:ring-olive-dark"
+    />
+    {images.length > 0 && (
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {Array.from(images).map((img, idx) => (
+          <img
+            key={idx}
+            src={URL.createObjectURL(img)}
+            alt="preview"
+            className="h-24 w-full object-cover rounded-lg border"
           />
-          {images.length > 0 && (
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {Array.from(images).map((img, idx) => (
-                <div key={idx} className="relative">
-                  <img
-                    src={URL.createObjectURL(img)}
-                    alt="preview"
-                    className="h-24 w-full object-cover rounded-lg border"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        ))}
+      </div>
+    )}
+  </div>
 
-        {/* Buttons */}
-        <div className="flex justify-end gap-3 mt-5">
-          <button
-            type="button"
-            onClick={() => setShowModal(false)}
-            className="px-5 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSaveDraft}
-            className="px-5 py-2 rounded-lg text-white bg-olive-dark hover:bg-olive transition"
-          >
-            Save Draft
-          </button>
-          <button
-            type="submit"
-            disabled={uploading}
-            className={`px-6 py-2 rounded-lg text-white font-medium transition ${
-              uploading
-                ? "bg-gray-500 cursor-not-allowed"
-                : "bg-olive-dark hover:bg-olive"
-            }`}
-          >
-            {uploading ? "Publishing..." : "Publish"}
-          </button>
-        </div>
-      </form>
+  {/* Buttons */}
+  <div className="flex justify-end gap-3 mt-5">
+    <button
+      type="button"
+      onClick={() => setShowModal(false)}
+      className="px-5 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition"
+    >
+      Cancel
+    </button>
+    <button
+      onClick={handleSaveDraft}
+      type="button"
+      className="px-5 py-2 rounded-lg text-white bg-olive-dark hover:bg-olive transition"
+    >
+      Save Draft
+    </button>
+    <button
+      type="submit"
+      disabled={uploading}
+      className={`px-6 py-2 rounded-lg text-white font-medium transition ${
+        uploading ? "bg-gray-500 cursor-not-allowed" : "bg-olive-dark hover:bg-olive"
+      }`}
+    >
+      {uploading ? "Publishing..." : "Publish"}
+    </button>
+  </div>
+</form>
+
+
     </div>
   </div>
 )}

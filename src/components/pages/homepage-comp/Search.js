@@ -29,6 +29,7 @@ const Search = ({ user }) => {
   }, [user]);
 
   const userName = fullName || 'Guest';
+  
 
   return (
     <div className="flex justify-center items-center mt-16 relative w-full h-[24rem] sm:h-[28rem] md:h-[30rem] overflow-hidden z-0">
