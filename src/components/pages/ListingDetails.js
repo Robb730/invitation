@@ -250,6 +250,69 @@ const ListingDetails = () => {
         <p className="text-gray-600">{listing.location}</p>
 
         {/* Image grid */}
+        {/* 1 IMAGE */}
+          {images.length === 1 && (
+            <div
+              className="overflow-hidden rounded-2xl cursor-pointer"
+              onClick={() => setSelectedIndex(0)}
+            >
+              <img
+                src={images[0]}
+                alt=""
+                className="w-full h-[500px] object-cover hover:scale-105 transition-transform duration-500"
+              />
+            </div>
+          )}
+        {/* 2 IMAGES */}
+          {images.length === 2 && (
+            <div className="grid grid-cols-2 gap-3">
+              {images.map((img, i) => (
+                <div
+                  key={i}
+                  className="overflow-hidden rounded-2xl cursor-pointer"
+                  onClick={() => setSelectedIndex(i)}
+                >
+                  <img
+                    src={img}
+                    alt=""
+                    className="w-full h-[400px] object-cover hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+        {/* 3 IMAGES */}
+          {images.length === 3 && (
+            <div className="grid grid-cols-3 gap-3">
+              <div
+                className="col-span-2 overflow-hidden rounded-2xl cursor-pointer"
+                onClick={() => setSelectedIndex(0)}
+              >
+                <img
+                  src={images[0]}
+                  alt=""
+                  className="w-full h-[400px] object-cover hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div className="grid grid-rows-2 gap-3">
+                {images.slice(1).map((img, i) => (
+                  <div
+                    key={i + 1}
+                    className="overflow-hidden rounded-2xl cursor-pointer"
+                    onClick={() => setSelectedIndex(i + 1)}
+                  >
+                    <img
+                      src={img}
+                      alt=""
+                      className="w-full h-[195px] object-cover hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         {images.length >= 4 && (
           <div className="grid grid-cols-3 gap-3">
             <div
