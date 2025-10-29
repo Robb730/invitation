@@ -41,7 +41,7 @@ const HostSignUp = () => {
         role: "host",
         joinedAt: serverTimestamp(),
         subscribed: false,
-        paypal: null,
+        ewallet: 0,
         profilePic:
           "https://static.vecteezy.com/system/resources/thumbnails/020/911/740/small/user-profile-icon-profile-avatar-user-icon-male-icon-face-icon-profile-icon-free-png.png",
       });
@@ -229,7 +229,7 @@ const HostSignUp = () => {
                 actions.order.create({
                   purchase_units: [
                     {
-                      amount: { value: "9.99", currency_code: "USD" },
+                      amount: { value: "499", currency_code: "PHP" },
                       description: "Monthly Host Subscription",
                     },
                   ],

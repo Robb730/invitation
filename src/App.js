@@ -27,7 +27,7 @@ function App() {
   ]);
   return (
     <>
-    <PayPalScriptProvider options={{ "client-id": "AVOE8rOmi0NKq68uIC51xVdcTFzxDptRhJu9GL10VQdPnTf2t32Eo2i9E8ZTp8sAxRRpX3arJAoAa5N2" }}>
+    <PayPalScriptProvider options={{ "client-id": "AVOE8rOmi0NKq68uIC51xVdcTFzxDptRhJu9GL10VQdPnTf2t32Eo2i9E8ZTp8sAxRRpX3arJAoAa5N2", currency: "PHP" }}>
       <RouterProvider router={router}/>  
     </PayPalScriptProvider>
     </>
