@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { collection, getDocs, query, where, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../../../firebaseConfig";
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 const Earnings = () => {
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
-  const [showPayPalModal, setShowPayPalModal] = useState(false);
- 
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [paypalEmail, setPaypalEmail] = useState("");
 
   // Fetch total earnings
   const fetchTotalEarnings = useCallback(async () => {
@@ -37,8 +37,6 @@ const Earnings = () => {
       const snap = await getDoc(host);
       if (snap.exists()) {
         setWalletBalance(snap.data().ewallet || 0);
-      } else {
-        setWalletBalance(0);
       }
     } catch (err) {
       console.error("Error fetching wallet balance:", err);
@@ -50,29 +48,51 @@ const Earnings = () => {
     fetchWalletBalance();
   }, [fetchTotalEarnings, fetchWalletBalance]);
 
-  // Handle Cash Out button click
+  // Open modal when cashout is clicked
   const handleCashOutClick = () => {
     if (walletBalance <= 0) {
       alert("Your eWallet balance is 0. Nothing to withdraw.");
       return;
     }
-    setShowPayPalModal(true);
+    setShowModal(true);
   };
 
-  // Handle successful withdrawal
-  const handleWithdrawalSuccess = async (details) => {
-    alert(`Withdrawal successful! Transaction ID: ${details.id}`);
-
-    try {
-      // Reset wallet balance to 0 after successful withdrawal
-      const userRef = doc(db, "users", auth.currentUser.uid);
-      await updateDoc(userRef, { ewallet: 0 });
-      setWalletBalance(0);
-    } catch (err) {
-      console.error("Error updating wallet after withdrawal:", err);
+  // Handle actual payout
+  const handleCashOut = async () => {
+    if (!paypalEmail.trim()) {
+      alert("Please enter your PayPal email.");
+      return;
     }
 
-    setShowPayPalModal(false);
+    setLoading(true);
+    try {
+      const response = await fetch("https://custom-email-backend.onrender.com/api/payout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hostId: auth.currentUser.uid,
+          amount: walletBalance,
+          paypalEmail: paypalEmail,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert("✅ Withdrawal successful! Funds sent to your PayPal account.");
+        await updateDoc(doc(db, "users", auth.currentUser.uid), { ewallet: 0 });
+        setWalletBalance(0);
+        setShowModal(false);
+        setPaypalEmail("");
+      } else {
+        alert("❌ Withdrawal failed: " + data.message);
+      }
+    } catch (error) {
+      console.error("Cash out error:", error);
+      alert("Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -100,53 +120,50 @@ const Earnings = () => {
       <div className="mt-6 text-center">
         <button
           onClick={handleCashOutClick}
-          className="bg-olive-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition"
+          disabled={loading}
+          className={`px-6 py-2 rounded-lg text-white ${
+            loading ? "bg-gray-400" : "bg-olive-dark hover:opacity-90"
+          } transition`}
         >
-          Cash Out
+          {loading ? "Processing..." : "Cash Out"}
         </button>
       </div>
 
-      {/* PayPal Cash Out Modal */}
-      {showPayPalModal && (
+      {/* PayPal Email Modal */}
+      {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-md text-center">
-            <h3 className="text-lg font-semibold mb-4">Withdraw to PayPal</h3>
-            <p className="text-gray-600 mb-4">
-              You are about to withdraw ₱{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })} to your PayPal account.
+          <div className="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-md">
+            <h3 className="text-lg font-semibold text-olive-dark mb-3 text-center">
+              Enter PayPal Email
+            </h3>
+            <p className="text-gray-600 text-sm mb-4 text-center">
+              Enter your PayPal email address where the funds will be sent.
             </p>
+            <input
+              type="email"
+              placeholder="yourname@example.com"
+              value={paypalEmail}
+              onChange={(e) => setPaypalEmail(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-olive-dark"
+            />
 
-            <PayPalScriptProvider options={{ "client-id": "AVOE8rOmi0NKq68uIC51xVdcTFzxDptRhJu9GL10VQdPnTf2t32Eo2i9E8ZTp8sAxRRpX3arJAoAa5N2", currency: "PHP" }}>
-              <PayPalButtons
-                style={{ layout: "vertical", color: "gold" }}
-                createOrder={(data, actions) => {
-                  return actions.order.create({
-                    purchase_units: [
-                      {
-                        amount: {
-                          currency_code: "PHP",
-                          value: walletBalance.toFixed(2),
-                        },
-                      },
-                    ],
-                  });
-                }}
-                onApprove={async (data, actions) => {
-                  const details = await actions.order.capture();
-                  handleWithdrawalSuccess(details);
-                }}
-                onError={(err) => {
-                  console.error("PayPal withdrawal error:", err);
-                  alert("Withdrawal failed. Please try again.");
-                }}
-              />
-            </PayPalScriptProvider>
-
-            <button
-              onClick={() => setShowPayPalModal(false)}
-              className="mt-4 text-gray-500 hover:text-black"
-            >
-              Cancel
-            </button>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 text-gray-500 hover:text-black"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCashOut}
+                disabled={loading}
+                className={`px-4 py-2 rounded-lg text-white ${
+                  loading ? "bg-gray-400" : "bg-olive-dark hover:opacity-90"
+                } transition`}
+              >
+                {loading ? "Processing..." : "Confirm"}
+              </button>
+            </div>
           </div>
         </div>
       )}
