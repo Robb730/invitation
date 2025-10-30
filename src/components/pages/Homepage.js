@@ -7,17 +7,28 @@ import Pagination from "./homepage-comp/Pagination";
 import Footer from "./homepage-comp/Footer";
 import { useNavigate } from "react-router-dom";
 
+
 const Homepage = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
+  
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
 
+    
+
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+  if (user && user.role === "host") {
+    navigate("/hostpage");
+  }
+}, [navigate, user]);
+
 
   
 

@@ -9,28 +9,35 @@ import HostSignUp from './components/pages/HostSignUp'
 import Verified from './components/Verified'
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 import ListingDetails from './components/pages/ListingDetails';
-
-
-
+import GuestReservations from './components/pages/GuestReservations'
 
 function App() {
   const router = createBrowserRouter([
-    {path: "/", element: <Homepage/>},
-    {path: "/hostpage", element: <HostPage/>},
-    {path: "/login", element: <Login/>},
-    {path: "/signup", element: <SignUp/>},
-    {path: "/becomehost", element: <HostSignUp/>},
-    {path: "/verified", element: <Verified/>},
-    {path: "*", element: <NotFound/>},
+    { path: "/", element: <Homepage />
+        
+          
+        
+      
+    },
+    { path: "/hostpage", element: (
+        <ProtectedRoute allowedRoles={["host", "both"]}>
+          <HostPage />
+        </ProtectedRoute>
+      )
+    },
+    { path: "/login", element: <Login /> },
+    { path: "/signup", element: <SignUp /> },
+    { path: "/becomehost", element: <HostSignUp /> },
+    { path: "/reservations", element: <GuestReservations /> },
+    { path: "/verified", element: <Verified /> },
     { path: "/room/:id", element: <ListingDetails /> },
-    {path: "/protected", element: <ProtectedRoute><Homepage/></ProtectedRoute>}
+    { path: "*", element: <NotFound /> },
   ]);
+
   return (
-    <>
     <PayPalScriptProvider options={{ "client-id": "AVOE8rOmi0NKq68uIC51xVdcTFzxDptRhJu9GL10VQdPnTf2t32Eo2i9E8ZTp8sAxRRpX3arJAoAa5N2", currency: "PHP" }}>
-      <RouterProvider router={router}/>  
+      <RouterProvider router={router}/>
     </PayPalScriptProvider>
-    </>
   );
 }
 

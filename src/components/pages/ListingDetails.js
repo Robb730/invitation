@@ -19,6 +19,7 @@ import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import { format, differenceInDays } from "date-fns";
 import { PayPalButtons } from "@paypal/react-paypal-js";
+import axios from "axios";
 
 const ListingDetails = () => {
   const { id } = useParams();
@@ -112,7 +113,7 @@ const isDateBooked = useCallback(
     const fetchBookedDates = async () => {
       try {
         const bookingsRef = collection(db, "reservations");
-        const q = query(bookingsRef, where("listingId", "==", id));
+        const q = query(bookingsRef, where("listingId", "==", id), where("status", "==", "Confirmed"));
         const snapshot = await getDocs(q);
         const booked = [];
         snapshot.forEach((doc) => {
@@ -583,6 +584,7 @@ const isDateBooked = useCallback(
                 discountApplied: discount,
                 paymentId: order.id,
                 paymentStatus: order.status,
+                status: "Confirmed",
                 createdAt: new Date(),
               });
 
@@ -599,8 +601,30 @@ const isDateBooked = useCallback(
                 });
               }
               
-
+              console.log("email sent to: "+ user.email);
+              await axios.post(
+              "https://custom-email-backend.onrender.com/send-reservation-receipt",
+              {
+                guestEmail: user.email,
+                guestName: user.name,
+                listingTitle: listing.title,
+                hostName: hostName,
+                checkIn: format(startDate, "MMM dd, yyyy"),
+                checkOut: format(endDate, "MMM dd, yyyy"),
+                totalAmount: total,
+                guests: guestCount,
+                reservationId: order.id,
+                nights: nights,
+              },
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+              
               alert("Reservation confirmed and payment successful!");
+              
               setShowSummary(false);
             } catch (err) {
               console.error("Error saving reservation:", err);
