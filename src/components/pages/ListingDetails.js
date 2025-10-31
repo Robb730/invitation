@@ -38,7 +38,7 @@ const ListingDetails = () => {
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [user, setUser] = useState("");
-  
+
 
   const [favorite, setFavorite] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -47,63 +47,63 @@ const ListingDetails = () => {
 
   const [bookedDates, setBookedDates] = useState([]);
   const [dateRange, setDateRange] = useState([
-  { startDate: new Date(), endDate: new Date(Date.now() + 86400000), key: "selection" },
-]);
+    { startDate: new Date(), endDate: new Date(Date.now() + 86400000), key: "selection" },
+  ]);
 
 
-// Get current page URL for sharing
-const currentURL = window.location.href;
+  // Get current page URL for sharing
+  const currentURL = window.location.href;
 
-const handleCopyLink = () => {
-  navigator.clipboard.writeText(currentURL);
-  alert("Link copied to clipboard!");
-};
-// 2️⃣ Function to get earliest available date
-const getEarliestAvailableDate = useCallback(() => {
-  const today = new Date();
-  let start = new Date(today);
-  start.setDate(start.getDate() + 1);
-
-  // Skip booked dates
-  while (bookedDates.some(d => start.toDateString() === new Date(d).toDateString())) {
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(currentURL);
+    alert("Link copied to clipboard!");
+  };
+  // 2️⃣ Function to get earliest available date
+  const getEarliestAvailableDate = useCallback(() => {
+    const today = new Date();
+    let start = new Date(today);
     start.setDate(start.getDate() + 1);
-  }
 
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { startDate: start, endDate: end };
-}, [bookedDates]);
+    // Skip booked dates
+    while (bookedDates.some(d => start.toDateString() === new Date(d).toDateString())) {
+      start.setDate(start.getDate() + 1);
+    }
 
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { startDate: start, endDate: end };
+  }, [bookedDates]);
 
-
-useEffect(() => {
-  if (!bookedDates || bookedDates.length === 0) return;
-
-  const { startDate, endDate } = getEarliestAvailableDate();
-  setDateRange([{ startDate, endDate, key: "selection" }]);
-}, [bookedDates, getEarliestAvailableDate]);
-
-// 4️⃣ Check if a date is booked (used in dayContentRenderer)
-const isDateBooked = useCallback(
-  (date) => bookedDates.some(b => new Date(b).toDateString() === date.toDateString()),
-  [bookedDates]
-);
-
-//check if listing is already your favorite
-  
 
 
   useEffect(() => {
-  const checkFavoriteStatus = async () => {
-    if (user && id) {
-      const fav = await isFavorite(id);
-      setFavorite(fav);
-    }
-  };
-  checkFavoriteStatus();
-}, [user, id]);
+    if (!bookedDates || bookedDates.length === 0) return;
 
-  
+    const { startDate, endDate } = getEarliestAvailableDate();
+    setDateRange([{ startDate, endDate, key: "selection" }]);
+  }, [bookedDates, getEarliestAvailableDate]);
+
+  // 4️⃣ Check if a date is booked (used in dayContentRenderer)
+  const isDateBooked = useCallback(
+    (date) => bookedDates.some(b => new Date(b).toDateString() === date.toDateString()),
+    [bookedDates]
+  );
+
+  //check if listing is already your favorite
+
+
+
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (user && id) {
+        const fav = await isFavorite(id);
+        setFavorite(fav);
+      }
+    };
+    checkFavoriteStatus();
+  }, [user, id]);
+
+
 
   // 🔹 Fetch listing info
   useEffect(() => {
@@ -120,12 +120,12 @@ const isDateBooked = useCallback(
   }, [id]);
 
   useEffect(() => {
-      const checkFav = async () => {
-        const fav = await isFavorite(id);
-        setFavorite(fav);
-      };
-      checkFav();
-    }, [id]);
+    const checkFav = async () => {
+      const fav = await isFavorite(id);
+      setFavorite(fav);
+    };
+    checkFav();
+  }, [id]);
 
 
   // 🔹 Fetch host info
@@ -139,7 +139,7 @@ const isDateBooked = useCallback(
           const data = hostSnap.data();
           setHostName(data.fullName || data.name || "Unknown Host");
           setHostPic(data.profilePic || "pic");
-          
+
         }
       } catch (err) {
         console.error("Error fetching host:", err);
@@ -175,24 +175,24 @@ const isDateBooked = useCallback(
 
   // 🔹 Get logged in user info
   useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-    if (currentUser) {
-      try {
-        const userRef = doc(db, "users", currentUser.uid);
-        const snap = await getDoc(userRef);
-        if (snap.exists()) {
-          setUser({ id: currentUser.uid, ...snap.data() });
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        try {
+          const userRef = doc(db, "users", currentUser.uid);
+          const snap = await getDoc(userRef);
+          if (snap.exists()) {
+            setUser({ id: currentUser.uid, ...snap.data() });
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
         }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
+      } else {
+        setUser(null);
       }
-    } else {
-      setUser(null);
-    }
-  });
+    });
 
-  return () => unsubscribe();
-}, []);
+    return () => unsubscribe();
+  }, []);
 
   if (!listing) {
     return (
@@ -233,7 +233,7 @@ const isDateBooked = useCallback(
       alert("Please select valid dates.");
       return;
     }
-    if(format(startDate, "MMM dd, yyyy") === format(endDate, "MMM dd, yyyy")){
+    if (format(startDate, "MMM dd, yyyy") === format(endDate, "MMM dd, yyyy")) {
       alert("Check-out date must be after check-in date.");
       return;
     }
@@ -290,25 +290,25 @@ const isDateBooked = useCallback(
   const total = discount ? subtotal - subtotal * (discount / 100) : subtotal;
 
   const handleFavoriteToggle = async () => {
-  if (!user) {
-    alert("You must be logged in to add to favorites.");
-    return;
-  }
-
-  try {
-    const newState = await toggleFavorite(id); // toggles in Firestore
-    setFavorite(newState); // update local state
-
-    if (newState) {
-      alert("Added to favorites!");
-    } else {
-      alert("Removed from favorites.");
+    if (!user) {
+      alert("You must be logged in to add to favorites.");
+      return;
     }
-  } catch (err) {
-    console.error("Error updating favorites:", err);
-    alert("Failed to update favorites. Please try again.");
-  }
-};
+
+    try {
+      const newState = await toggleFavorite(id); // toggles in Firestore
+      setFavorite(newState); // update local state
+
+      if (newState) {
+        alert("Added to favorites!");
+      } else {
+        alert("Removed from favorites.");
+      }
+    } catch (err) {
+      console.error("Error updating favorites:", err);
+      alert("Failed to update favorites. Please try again.");
+    }
+  };
 
 
 
@@ -358,67 +358,67 @@ const isDateBooked = useCallback(
 
         {/* Image grid */}
         {/* 1 IMAGE */}
-          {images.length === 1 && (
+        {images.length === 1 && (
+          <div
+            className="overflow-hidden rounded-2xl cursor-pointer"
+            onClick={() => setSelectedIndex(0)}
+          >
+            <img
+              src={images[0]}
+              alt=""
+              className="w-full h-[500px] object-cover hover:scale-105 transition-transform duration-500"
+            />
+          </div>
+        )}
+        {/* 2 IMAGES */}
+        {images.length === 2 && (
+          <div className="grid grid-cols-2 gap-3">
+            {images.map((img, i) => (
+              <div
+                key={i}
+                className="overflow-hidden rounded-2xl cursor-pointer"
+                onClick={() => setSelectedIndex(i)}
+              >
+                <img
+                  src={img}
+                  alt=""
+                  className="w-full h-[400px] object-cover hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 3 IMAGES */}
+        {images.length === 3 && (
+          <div className="grid grid-cols-3 gap-3">
             <div
-              className="overflow-hidden rounded-2xl cursor-pointer"
+              className="col-span-2 overflow-hidden rounded-2xl cursor-pointer"
               onClick={() => setSelectedIndex(0)}
             >
               <img
                 src={images[0]}
                 alt=""
-                className="w-full h-[500px] object-cover hover:scale-105 transition-transform duration-500"
+                className="w-full h-[400px] object-cover hover:scale-105 transition-transform duration-500"
               />
             </div>
-          )}
-        {/* 2 IMAGES */}
-          {images.length === 2 && (
-            <div className="grid grid-cols-2 gap-3">
-              {images.map((img, i) => (
+            <div className="grid grid-rows-2 gap-3">
+              {images.slice(1).map((img, i) => (
                 <div
-                  key={i}
+                  key={i + 1}
                   className="overflow-hidden rounded-2xl cursor-pointer"
-                  onClick={() => setSelectedIndex(i)}
+                  onClick={() => setSelectedIndex(i + 1)}
                 >
                   <img
                     src={img}
                     alt=""
-                    className="w-full h-[400px] object-cover hover:scale-105 transition-transform duration-500"
+                    className="w-full h-[195px] object-cover hover:scale-105 transition-transform duration-500"
                   />
                 </div>
               ))}
             </div>
-          )}
-
-        {/* 3 IMAGES */}
-          {images.length === 3 && (
-            <div className="grid grid-cols-3 gap-3">
-              <div
-                className="col-span-2 overflow-hidden rounded-2xl cursor-pointer"
-                onClick={() => setSelectedIndex(0)}
-              >
-                <img
-                  src={images[0]}
-                  alt=""
-                  className="w-full h-[400px] object-cover hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="grid grid-rows-2 gap-3">
-                {images.slice(1).map((img, i) => (
-                  <div
-                    key={i + 1}
-                    className="overflow-hidden rounded-2xl cursor-pointer"
-                    onClick={() => setSelectedIndex(i + 1)}
-                  >
-                    <img
-                      src={img}
-                      alt=""
-                      className="w-full h-[195px] object-cover hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          </div>
+        )}
 
         {images.length >= 4 && (
           <div className="grid grid-cols-3 gap-3">
@@ -470,134 +470,134 @@ const isDateBooked = useCallback(
 
           {/* Reservation box */}
           <div className="space-y-5">
-  {/* 🧑‍💼 Host Info */}
-  <div className="bg-white border rounded-2xl p-5 shadow-md flex items-center gap-4">
-    <img
-      src={hostPic}
-      alt={hostName}
-      className="w-14 h-14 rounded-full object-cover"
-    />
-    <div>
-      <h4 className="font-semibold text-olive-dark">{hostName}</h4>
-      <p className="text-gray-500 text-sm">Host</p>
-    </div>
-  </div>
+            {/* 🧑‍💼 Host Info */}
+            <div className="bg-white border rounded-2xl p-5 shadow-md flex items-center gap-4">
+              <img
+                src={hostPic}
+                alt={hostName}
+                className="w-14 h-14 rounded-full object-cover"
+              />
+              <div>
+                <h4 className="font-semibold text-olive-dark">{hostName}</h4>
+                <p className="text-gray-500 text-sm">Host</p>
+              </div>
+            </div>
 
-  {/* 💳 Reservation Box */}
-  <div className="bg-white border rounded-2xl p-6 shadow-md space-y-5">
-    {/* Price and Buttons Row */}
-    <div className="flex items-center justify-between">
-      <h2 className="text-xl font-bold">
-        ₱{listing.price}
-        <span className="text-gray-600 text-sm font-normal"> / night</span>
-      </h2>
+            {/* 💳 Reservation Box */}
+            <div className="bg-white border rounded-2xl p-6 shadow-md space-y-5">
+              {/* Price and Buttons Row */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">
+                  ₱{listing.price}
+                  <span className="text-gray-600 text-sm font-normal"> / night</span>
+                </h2>
 
-      <div className="flex items-center gap-3">
-  {/* Favorite Button */}
-  <button onClick={handleFavoriteToggle} className="p-2 rounded-full border transition">
-    {favorite ? <AiFillHeart className="text-olive text-xl" /> : <AiOutlineHeart className="text-gray-500 text-xl" />}
-  </button>
+                <div className="flex items-center gap-3">
+                  {/* Favorite Button */}
+                  <button onClick={handleFavoriteToggle} className="p-2 rounded-full border transition">
+                    {favorite ? <AiFillHeart className="text-olive text-xl" /> : <AiOutlineHeart className="text-gray-500 text-xl" />}
+                  </button>
 
-  {/* Share Button */}
-  <button
-    onClick={() => setShowShareModal(true)}
-    className="p-2 rounded-full border transition hover:bg-gray-100"
-    title="Share Listing"
-  >
-    <FiShare2 className="text-gray-600 text-xl" />
-  </button>
+                  {/* Share Button */}
+                  <button
+                    onClick={() => setShowShareModal(true)}
+                    className="p-2 rounded-full border transition hover:bg-gray-100"
+                    title="Share Listing"
+                  >
+                    <FiShare2 className="text-gray-600 text-xl" />
+                  </button>
 
-  {/* Reserve Button */}
-  <button
-    onClick={handleReserveClick}
-    className="bg-olive-dark text-white font-semibold py-2 px-5 rounded-lg hover:opacity-90 transition"
-  >
-    Reserve
-  </button>
-</div>
-    </div>
+                  {/* Reserve Button */}
+                  <button
+                    onClick={handleReserveClick}
+                    className="bg-olive-dark text-white font-semibold py-2 px-5 rounded-lg hover:opacity-90 transition"
+                  >
+                    Reserve
+                  </button>
+                </div>
+              </div>
 
-    {/* Guests Input */}
-    <div className="flex items-center justify-between border-t pt-3">
-      <label className="text-gray-700 font-medium">Guests:</label>
-      <input
-        type="number"
-        min="1"
-        max={listing.guests}
-        value={guestCount}
-        onChange={(e) => setGuestCount(Number(e.target.value))}
-        className="border rounded-lg px-3 py-1.5 w-24 text-center focus:ring-2 focus:ring-olive-dark outline-none"
-      />
-    </div>
+              {/* Guests Input */}
+              <div className="flex items-center justify-between border-t pt-3">
+                <label className="text-gray-700 font-medium">Guests:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max={listing.guests}
+                  value={guestCount}
+                  onChange={(e) => setGuestCount(Number(e.target.value))}
+                  className="border rounded-lg px-3 py-1.5 w-24 text-center focus:ring-2 focus:ring-olive-dark outline-none"
+                />
+              </div>
 
-    {/* Calendar Button */}
-    <div className="border-t pt-3 text-center">
-      <button
-        onClick={() => setShowCalendar(true)}
-        className="flex items-center justify-center gap-2 mx-auto bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
-      >
-        <Calendar size={18} />
-        <span>
-          {format(dateRange[0].startDate, "MMM dd")} -{" "}
-          {format(dateRange[0].endDate, "MMM dd, yyyy")}
-        </span>
-      </button>
-    </div>
-  </div>
-</div>
-        {showShareModal && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div className="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-sm relative">
-      <button
-        onClick={() => setShowShareModal(false)}
-        className="absolute top-3 right-3 text-gray-500 hover:text-black"
-      >
-        <X size={22} />
-      </button>
-      <h3 className="text-xl font-bold text-olive-dark mb-4 text-center">
-        Share this listing
-      </h3>
+              {/* Calendar Button */}
+              <div className="border-t pt-3 text-center">
+                <button
+                  onClick={() => setShowCalendar(true)}
+                  className="flex items-center justify-center gap-2 mx-auto bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
+                >
+                  <Calendar size={18} />
+                  <span>
+                    {format(dateRange[0].startDate, "MMM dd")} -{" "}
+                    {format(dateRange[0].endDate, "MMM dd, yyyy")}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          {showShareModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-sm relative">
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="absolute top-3 right-3 text-gray-500 hover:text-black"
+                >
+                  <X size={22} />
+                </button>
+                <h3 className="text-xl font-bold text-olive-dark mb-4 text-center">
+                  Share this listing
+                </h3>
 
-      <div className="space-y-4">
-        {/* Copy link */}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={currentURL}
-            readOnly
-            className="flex-1 border px-3 py-2 rounded-lg"
-          />
-          <button
-            onClick={handleCopyLink}
-            className="bg-olive-dark text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
-          >
-            Copy
-          </button>
-        </div>
+                <div className="space-y-4">
+                  {/* Copy link */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={currentURL}
+                      readOnly
+                      className="flex-1 border px-3 py-2 rounded-lg"
+                    />
+                    <button
+                      onClick={handleCopyLink}
+                      className="bg-olive-dark text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+                    >
+                      Copy
+                    </button>
+                  </div>
 
-        {/* Social links */}
-        <div className="flex justify-center gap-4">
-          <a
-  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentURL)}&quote=${encodeURIComponent(listing.title)}`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
->
-  Facebook
-</a>
-          <a
-            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(currentURL)}&text=${encodeURIComponent(listing.title)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-blue-400 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
-          >
-            Twitter
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+                  {/* Social links */}
+                  <div className="flex justify-center gap-4">
+                    <a
+                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentURL)}&quote=${encodeURIComponent(listing.title)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+                    >
+                      Facebook
+                    </a>
+                    <a
+                      href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(currentURL)}&text=${encodeURIComponent(listing.title)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-blue-400 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+                    >
+                      Twitter
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
 
@@ -682,144 +682,144 @@ const isDateBooked = useCallback(
 
         {/* Reservation Summary Modal */}
         {showSummary && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div className="bg-white rounded-2xl p-6 w-[90%] max-w-lg shadow-lg relative">
-      <button
-        onClick={() => setShowSummary(false)}
-        className="absolute top-3 right-3 text-gray-500 hover:text-black"
-      >
-        <X size={22} />
-      </button>
-      <h3 className="text-xl font-bold text-olive-dark text-center mb-4">
-        Booking Summary
-      </h3>
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-[90%] max-w-lg shadow-lg relative">
+              <button
+                onClick={() => setShowSummary(false)}
+                className="absolute top-3 right-3 text-gray-500 hover:text-black"
+              >
+                <X size={22} />
+              </button>
+              <h3 className="text-xl font-bold text-olive-dark text-center mb-4">
+                Booking Summary
+              </h3>
 
-      <div className="space-y-3 text-gray-700">
-        <p><strong>Guest Name:</strong> {user.name}</p>
-        <p><strong>Guest Email:</strong> {user.email}</p>
-        <p><strong>Guests:</strong> {guestCount}</p>
-        <p><strong>Check-in:</strong> {format(startDate, "MMM dd, yyyy")}</p>
-        <p><strong>Check-out:</strong> {format(endDate, "MMM dd, yyyy")}</p>
-        <p><strong>Nights:</strong> {nights}</p>
-        <p><strong>Price per Night:</strong> ₱{listing.price}</p>
-        <p><strong>Subtotal:</strong> ₱{subtotal.toLocaleString()}</p>
+              <div className="space-y-3 text-gray-700">
+                <p><strong>Guest Name:</strong> {user.name}</p>
+                <p><strong>Guest Email:</strong> {user.email}</p>
+                <p><strong>Guests:</strong> {guestCount}</p>
+                <p><strong>Check-in:</strong> {format(startDate, "MMM dd, yyyy")}</p>
+                <p><strong>Check-out:</strong> {format(endDate, "MMM dd, yyyy")}</p>
+                <p><strong>Nights:</strong> {nights}</p>
+                <p><strong>Price per Night:</strong> ₱{listing.price}</p>
+                <p><strong>Subtotal:</strong> ₱{subtotal.toLocaleString()}</p>
 
-        <div className="flex items-center gap-2 mt-4">
-          <Tag size={18} />
-          <input
-            type="text"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value)}
-            placeholder="Enter promo code"
-            className="border px-3 py-2 rounded-lg w-full"
-          />
-          <button
-            onClick={handleApplyPromo}
-            className="bg-olive-dark text-white px-3 py-2 rounded-lg hover:opacity-90"
-          >
-            Apply
-          </button>
-        </div>
+                <div className="flex items-center gap-2 mt-4">
+                  <Tag size={18} />
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    placeholder="Enter promo code"
+                    className="border px-3 py-2 rounded-lg w-full"
+                  />
+                  <button
+                    onClick={handleApplyPromo}
+                    className="bg-olive-dark text-white px-3 py-2 rounded-lg hover:opacity-90"
+                  >
+                    Apply
+                  </button>
+                </div>
 
-        {discount > 0 && (
-          <p className="text-green-600 mt-2">
-            Discount Applied: {discount}% off
-          </p>
+                {discount > 0 && (
+                  <p className="text-green-600 mt-2">
+                    Discount Applied: {discount}% off
+                  </p>
+                )}
+
+                <div className="border-t pt-3 text-lg font-semibold text-right">
+                  Total: ₱{total.toLocaleString()}
+                </div>
+              </div>
+
+              <div className="text-center mt-6">
+                <PayPalButtons
+                  style={{ layout: "vertical", color: "gold" }}
+                  createOrder={(data, actions) => {
+                    return actions.order.create({
+                      purchase_units: [
+                        {
+                          amount: {
+                            currency_code: "PHP",
+                            value: total.toFixed(2), // your total price
+                          },
+                          description: listing.title,
+                        },
+                      ],
+                    });
+                  }}
+                  onApprove={async (data, actions) => {
+                    const order = await actions.order.capture();
+
+                    // ✅ Save to Firestore after successful payment
+                    try {
+                      await addDoc(collection(db, "reservations"), {
+                        listingId: id,
+                        guestId: auth.currentUser.uid,
+                        hostId: listing.hostId,
+                        checkIn: format(startDate, "yyyy-MM-dd"),
+                        checkOut: format(endDate, "yyyy-MM-dd"),
+                        guests: guestCount,
+                        totalAmount: total,
+                        discountApplied: discount,
+                        paymentId: order.id,
+                        paymentStatus: order.status,
+                        status: "Confirmed",
+                        createdAt: new Date(),
+                      });
+
+                      const hostRef = doc(db, "users", listing.hostId);
+                      const hostSnap = await getDoc(hostRef);
+                      console.log("hostRef: ", hostRef);
+
+                      if (hostSnap.exists()) {
+                        const hostData = hostSnap.data();
+                        const currentEwallet = hostData.ewallet; // default to 0 if undefined
+
+                        await updateDoc(hostRef, {
+                          ewallet: currentEwallet + total,
+                        });
+                      }
+
+                      console.log("email sent to: " + user.email);
+                      await axios.post(
+                        "https://custom-email-backend.onrender.com/send-reservation-receipt",
+                        {
+                          guestEmail: user.email,
+                          guestName: user.name,
+                          listingTitle: listing.title,
+                          hostName: hostName,
+                          checkIn: format(startDate, "MMM dd, yyyy"),
+                          checkOut: format(endDate, "MMM dd, yyyy"),
+                          totalAmount: total,
+                          guests: guestCount,
+                          reservationId: order.id,
+                          nights: nights,
+                        },
+                        {
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                        }
+                      );
+
+                      alert("Reservation confirmed and payment successful!");
+
+                      setShowSummary(false);
+                    } catch (err) {
+                      console.error("Error saving reservation:", err);
+                      alert("Error saving reservation after payment.");
+                    }
+                  }}
+                  onError={(err) => {
+                    console.error("PayPal error:", err);
+                    alert("Payment failed. Please try again.");
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         )}
-
-        <div className="border-t pt-3 text-lg font-semibold text-right">
-          Total: ₱{total.toLocaleString()}
-        </div>
-      </div>
-
-      <div className="text-center mt-6">
-        <PayPalButtons
-          style={{ layout: "vertical", color: "gold" }}
-          createOrder={(data, actions) => {
-            return actions.order.create({
-              purchase_units: [
-                {
-                  amount: {
-                    currency_code: "PHP",
-                    value: total.toFixed(2), // your total price
-                  },
-                  description: listing.title,
-                },
-              ],
-            });
-          }}
-          onApprove={async (data, actions) => {
-            const order = await actions.order.capture();
-
-            // ✅ Save to Firestore after successful payment
-            try {
-              await addDoc(collection(db, "reservations"), {
-                listingId: id,
-                guestId: auth.currentUser.uid,
-                hostId: listing.hostId,
-                checkIn: format(startDate, "yyyy-MM-dd"),
-                checkOut: format(endDate, "yyyy-MM-dd"),
-                guests: guestCount,
-                totalAmount: total,
-                discountApplied: discount,
-                paymentId: order.id,
-                paymentStatus: order.status,
-                status: "Confirmed",
-                createdAt: new Date(),
-              });
-
-              const hostRef = doc(db, "users", listing.hostId);
-              const hostSnap = await getDoc(hostRef);
-              console.log("hostRef: ", hostRef);
-
-              if (hostSnap.exists()) {
-                const hostData = hostSnap.data();
-                const currentEwallet = hostData.ewallet; // default to 0 if undefined
-
-                await updateDoc(hostRef, {
-                  ewallet: currentEwallet + total,
-                });
-              }
-              
-              console.log("email sent to: "+ user.email);
-              await axios.post(
-              "https://custom-email-backend.onrender.com/send-reservation-receipt",
-              {
-                guestEmail: user.email,
-                guestName: user.name,
-                listingTitle: listing.title,
-                hostName: hostName,
-                checkIn: format(startDate, "MMM dd, yyyy"),
-                checkOut: format(endDate, "MMM dd, yyyy"),
-                totalAmount: total,
-                guests: guestCount,
-                reservationId: order.id,
-                nights: nights,
-              },
-              {
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-              
-              alert("Reservation confirmed and payment successful!");
-              
-              setShowSummary(false);
-            } catch (err) {
-              console.error("Error saving reservation:", err);
-              alert("Error saving reservation after payment.");
-            }
-          }}
-          onError={(err) => {
-            console.error("PayPal error:", err);
-            alert("Payment failed. Please try again.");
-          }}
-        />
-      </div>
-    </div>
-  </div>
-)}
       </div>
 
       <Footer />

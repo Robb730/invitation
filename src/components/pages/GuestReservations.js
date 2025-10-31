@@ -14,7 +14,6 @@ import Navbar from "./homepage-comp/Navbar";
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { orderBy } from "firebase/firestore";
 
 
 const GuestReservations = () => {
@@ -113,7 +112,7 @@ const GuestReservations = () => {
 
     try {
       const reservationRef = doc(db, "reservations", res.id);
-      await updateDoc(reservationRef, { status: "Canceled" });
+      await updateDoc(reservationRef, { status: "Cancelled" });
       setReservations((prev) =>
         prev.map((r) => (r.id === res.id ? { ...r, status: "Canceled" } : r))
       );
