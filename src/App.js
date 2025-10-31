@@ -10,6 +10,8 @@ import Verified from './components/Verified'
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 import ListingDetails from './components/pages/ListingDetails';
 import GuestReservations from './components/pages/GuestReservations'
+import FavoritesPage from './components/pages/FavoritesPage'
+import GuestProfile from './components/pages/GuestProfile'
 
 function App() {
   const router = createBrowserRouter([
@@ -29,6 +31,8 @@ function App() {
     { path: "/signup", element: <SignUp /> },
     { path: "/becomehost", element: <HostSignUp /> },
     { path: "/reservations", element: <GuestReservations /> },
+    { path: "/favorites", element: <FavoritesPage /> },
+    { path: "/profile", element: <GuestProfile /> },
     { path: "/verified", element: <Verified /> },
     { path: "/room/:id", element: <ListingDetails /> },
     { path: "*", element: <NotFound /> },

@@ -1,19 +1,26 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { collection, getDocs, query, orderBy, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, doc, getDoc} from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../../../firebaseConfig";
 import {getAuth} from 'firebase/auth';
+import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
+import { isFavorite, toggleFavorite } from "../../../utils/favorites";
+
 
 // 🔹 SlideshowCard Component
 const SlideshowCard = ({ listing, onListingClick }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [favorite, setFavorite] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [favMessage, setFavMessage] = useState("");
   const intervalRef = useRef(null);
 
   const images = useMemo(() => {
     return Array.isArray(listing.images) ? listing.images : [listing.images];
   }, [listing.images]);
 
+  // Auto image slideshow on hover
   useEffect(() => {
     if (isHovered && images.length > 1) {
       intervalRef.current = setInterval(() => {
@@ -25,9 +32,33 @@ const SlideshowCard = ({ listing, onListingClick }) => {
     return () => clearInterval(intervalRef.current);
   }, [isHovered, images.length]);
 
+
+  // Handle favorite toggle
+  useEffect(() => {
+    const checkFav = async () => {
+      const fav = await isFavorite(listing.id);
+      setFavorite(fav);
+      
+    };
+    checkFav();
+  }, [listing.id]);
+
+  const handleFavoriteClick = async (e) => {
+    e.stopPropagation(); // prevent opening listing on heart click
+    const newState = await toggleFavorite(listing.id);
+    setFavorite(newState);
+    if (newState) {
+    setFavMessage("Added to Favorites");
+  } else {
+    setFavMessage("Removed from Favorites");
+  }
+    setShowModal(true);
+    setTimeout(() => setShowModal(false), 1500);
+  };
+
   return (
     <div
-      className="bg-white w-full max-w-[440px] rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] duration-300 overflow-hidden cursor-pointer flex flex-col"
+      className="relative bg-white w-full max-w-[440px] rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] duration-300 overflow-hidden cursor-pointer flex flex-col"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
@@ -35,12 +66,26 @@ const SlideshowCard = ({ listing, onListingClick }) => {
       }}
     >
       {/* 🖼 Image Section */}
-      <div className="h-48 sm:h-56 md:h-60 w-full overflow-hidden">
+      <div className="h-48 sm:h-56 md:h-60 w-full overflow-hidden relative">
         <img
           src={images[currentImageIndex]}
           alt={listing.title}
           className="w-full h-full object-cover transition-transform duration-500"
         />
+
+        {/* ❤️ Favorite Icon */}
+        {isHovered && (
+          <button
+            onClick={handleFavoriteClick}
+            className="absolute top-3 right-3 bg-white bg-opacity-80 rounded-full p-2 hover:bg-opacity-100 transition"
+          >
+            {favorite ? (
+              <AiFillHeart className="text-olive text-xl" />
+            ) : (
+              <AiOutlineHeart className="text-gray-500 text-xl" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* ℹ Info Section */}
@@ -52,7 +97,6 @@ const SlideshowCard = ({ listing, onListingClick }) => {
           <p className="text-xs sm:text-sm text-gray-500 mt-1 line-clamp-1">
             {listing.location}
           </p>
-
           {listing.hostName && (
             <p className="text-xs text-gray-600 mt-2 italic line-clamp-1">
               Hosted by{" "}
@@ -65,9 +109,10 @@ const SlideshowCard = ({ listing, onListingClick }) => {
 
         <div className="flex items-center justify-between mt-4">
           <p className="text-base sm:text-lg font-bold text-olive-dark">
-            ₱{listing.price} / {" "} <span className="font-medium text-gray-500 text-base">
-                {listing.priceType}
-              </span>
+            ₱{listing.price} /{" "}
+            <span className="font-medium text-gray-500 text-base">
+              {listing.priceType}
+            </span>
           </p>
           <button
             onClick={() => onListingClick(listing.id)}
@@ -77,9 +122,20 @@ const SlideshowCard = ({ listing, onListingClick }) => {
           </button>
         </div>
       </div>
+
+      {/* 💬 Modal */}
+      {showModal && (
+        <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black bg-opacity-30">
+          <div className="bg-white px-6 py-3 rounded-lg shadow-md text-olive-dark font-semibold">
+            {favMessage}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+
 
 // 🔹 Pagination Component
 const Pagination = () => {

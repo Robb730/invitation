@@ -14,6 +14,8 @@ import Navbar from "./homepage-comp/Navbar";
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { orderBy } from "firebase/firestore";
+
 
 const GuestReservations = () => {
   const [reservations, setReservations] = useState([]);
@@ -47,49 +49,62 @@ const GuestReservations = () => {
 
   // Fetch guest reservations
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setUser(null);
-        setReservations([]);
-        setLoading(false);
-        return;
-      }
-
-      setUser(user);
-      setLoading(true);
-
-      try {
-        const q = query(
-          collection(db, "reservations"),
-          where("guestId", "==", user.uid)
-        );
-        const querySnapshot = await getDocs(q);
-        const fetched = [];
-
-        for (const resDoc of querySnapshot.docs) {
-          const resData = resDoc.data();
-          const listingRef = doc(db, "listings", resData.listingId);
-          const listingSnap = await getDoc(listingRef);
-
-          if (listingSnap.exists()) {
-            fetched.push({
-              id: resDoc.id,
-              ...resData,
-              listing: { id: listingSnap.id, ...listingSnap.data() },
-            });
-          }
-        }
-
-        setReservations(fetched);
-      } catch (error) {
-        console.error("Error fetching reservations:", error);
-      }
-
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      setUser(null);
+      setReservations([]);
       setLoading(false);
-    });
+      alert("Please log in to view your reservations.");
+      navigate("/login");
+      return;
+    }
 
-    return () => unsubscribe();
-  }, []);
+    setUser(user);
+    setLoading(true);
+
+    try {
+      // ❌ remove orderBy("createdAt", "desc") since it needs an index
+      const q = query(
+        collection(db, "reservations"),
+        where("guestId", "==", user.uid)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const fetched = [];
+
+      for (const resDoc of querySnapshot.docs) {
+        const resData = resDoc.data();
+        const listingRef = doc(db, "listings", resData.listingId);
+        const listingSnap = await getDoc(listingRef);
+
+        if (listingSnap.exists()) {
+          fetched.push({
+            id: resDoc.id,
+            ...resData,
+            listing: { id: listingSnap.id, ...listingSnap.data() },
+          });
+        }
+      }
+
+      // 🟢 manually sort newest first (based on createdAt)
+      fetched.sort((a, b) => {
+        const dateA =
+          a.createdAt?.seconds || new Date(a.createdAt).getTime() || 0;
+        const dateB =
+          b.createdAt?.seconds || new Date(b.createdAt).getTime() || 0;
+        return dateB - dateA; // newest first
+      });
+
+      setReservations(fetched);
+    } catch (error) {
+      console.error("Error fetching reservations:", error);
+    }
+
+    setLoading(false);
+  });
+
+  return () => unsubscribe();
+}, [navigate]);
 
   // Cancel reservation
   const handleCancel = async (res) => {

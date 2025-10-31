@@ -20,6 +20,11 @@ import "react-date-range/dist/theme/default.css";
 import { format, differenceInDays } from "date-fns";
 import { PayPalButtons } from "@paypal/react-paypal-js";
 import axios from "axios";
+import { onAuthStateChanged } from "firebase/auth";
+import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
+import { isFavorite, toggleFavorite } from "../../utils/favorites";
+import { FiShare2 } from "react-icons/fi";
+
 
 const ListingDetails = () => {
   const { id } = useParams();
@@ -35,16 +40,29 @@ const ListingDetails = () => {
   const [user, setUser] = useState("");
   
 
-  
+  const [favorite, setFavorite] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+
+
+
   const [bookedDates, setBookedDates] = useState([]);
   const [dateRange, setDateRange] = useState([
   { startDate: new Date(), endDate: new Date(Date.now() + 86400000), key: "selection" },
 ]);
 
+
+// Get current page URL for sharing
+const currentURL = window.location.href;
+
+const handleCopyLink = () => {
+  navigator.clipboard.writeText(currentURL);
+  alert("Link copied to clipboard!");
+};
 // 2️⃣ Function to get earliest available date
 const getEarliestAvailableDate = useCallback(() => {
   const today = new Date();
   let start = new Date(today);
+  start.setDate(start.getDate() + 1);
 
   // Skip booked dates
   while (bookedDates.some(d => start.toDateString() === new Date(d).toDateString())) {
@@ -55,6 +73,8 @@ const getEarliestAvailableDate = useCallback(() => {
   end.setDate(end.getDate() + 1);
   return { startDate: start, endDate: end };
 }, [bookedDates]);
+
+
 
 useEffect(() => {
   if (!bookedDates || bookedDates.length === 0) return;
@@ -69,8 +89,19 @@ const isDateBooked = useCallback(
   [bookedDates]
 );
 
-
+//check if listing is already your favorite
   
+
+
+  useEffect(() => {
+  const checkFavoriteStatus = async () => {
+    if (user && id) {
+      const fav = await isFavorite(id);
+      setFavorite(fav);
+    }
+  };
+  checkFavoriteStatus();
+}, [user, id]);
 
   
 
@@ -87,6 +118,15 @@ const isDateBooked = useCallback(
     };
     fetchListing();
   }, [id]);
+
+  useEffect(() => {
+      const checkFav = async () => {
+        const fav = await isFavorite(id);
+        setFavorite(fav);
+      };
+      checkFav();
+    }, [id]);
+
 
   // 🔹 Fetch host info
   useEffect(() => {
@@ -135,15 +175,24 @@ const isDateBooked = useCallback(
 
   // 🔹 Get logged in user info
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
-    const fetchUser = async () => {
-      const userRef = doc(db, "users", user.uid);
-      const snap = await getDoc(userRef);
-      if (snap.exists()) setUser(snap.data());
-    };
-    fetchUser();
-  }, []);
+  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    if (currentUser) {
+      try {
+        const userRef = doc(db, "users", currentUser.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          setUser({ id: currentUser.uid, ...snap.data() });
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    } else {
+      setUser(null);
+    }
+  });
+
+  return () => unsubscribe();
+}, []);
 
   if (!listing) {
     return (
@@ -239,6 +288,30 @@ const isDateBooked = useCallback(
   const nights = Math.max(1, differenceInDays(endDate, startDate));
   const subtotal = listing.price * nights;
   const total = discount ? subtotal - subtotal * (discount / 100) : subtotal;
+
+  const handleFavoriteToggle = async () => {
+  if (!user) {
+    alert("You must be logged in to add to favorites.");
+    return;
+  }
+
+  try {
+    const newState = await toggleFavorite(id); // toggles in Firestore
+    setFavorite(newState); // update local state
+
+    if (newState) {
+      alert("Added to favorites!");
+    } else {
+      alert("Removed from favorites.");
+    }
+  } catch (err) {
+    console.error("Error updating favorites:", err);
+    alert("Failed to update favorites. Please try again.");
+  }
+};
+
+
+
 
   return (
     <div className="bg-beige min-h-screen">
@@ -397,61 +470,135 @@ const isDateBooked = useCallback(
 
           {/* Reservation box */}
           <div className="space-y-5">
-            <div className="bg-white border rounded-2xl p-5 shadow-md flex items-center gap-4">
-              <img
-                src={hostPic}
-                alt={hostName}
-                className="w-14 h-14 rounded-full object-cover"
-              />
-              <div>
-                <h4 className="font-semibold text-olive-dark">{hostName}</h4>
-                <p className="text-gray-500 text-sm">Host</p>
-              </div>
-            </div>
+  {/* 🧑‍💼 Host Info */}
+  <div className="bg-white border rounded-2xl p-5 shadow-md flex items-center gap-4">
+    <img
+      src={hostPic}
+      alt={hostName}
+      className="w-14 h-14 rounded-full object-cover"
+    />
+    <div>
+      <h4 className="font-semibold text-olive-dark">{hostName}</h4>
+      <p className="text-gray-500 text-sm">Host</p>
+    </div>
+  </div>
 
-            <div className="bg-white border rounded-2xl p-6 shadow-md space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold">
-                  ₱{listing.price}
-                  <span className="text-gray-600 text-sm font-normal">
-                    {" "}
-                    / night
-                  </span>
-                </h2>
-                <button
-                  onClick={handleReserveClick}
-                  className="bg-olive-dark text-white font-semibold py-2 px-5 rounded-lg hover:opacity-90 transition"
-                >
-                  Reserve
-                </button>
-              </div>
+  {/* 💳 Reservation Box */}
+  <div className="bg-white border rounded-2xl p-6 shadow-md space-y-5">
+    {/* Price and Buttons Row */}
+    <div className="flex items-center justify-between">
+      <h2 className="text-xl font-bold">
+        ₱{listing.price}
+        <span className="text-gray-600 text-sm font-normal"> / night</span>
+      </h2>
 
-              <div className="flex items-center justify-between border-t pt-3">
-                <label className="text-gray-700 font-medium">Guests:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max={listing.guests}
-                  value={guestCount}
-                  onChange={(e) => setGuestCount(Number(e.target.value))}
-                  className="border rounded-lg px-3 py-1.5 w-24 text-center focus:ring-2 focus:ring-olive-dark outline-none"
-                />
-              </div>
+      <div className="flex items-center gap-3">
+  {/* Favorite Button */}
+  <button onClick={handleFavoriteToggle} className="p-2 rounded-full border transition">
+    {favorite ? <AiFillHeart className="text-olive text-xl" /> : <AiOutlineHeart className="text-gray-500 text-xl" />}
+  </button>
 
-              <div className="border-t pt-3 text-center">
-                <button
-                  onClick={() => setShowCalendar(true)}
-                  className="flex items-center justify-center gap-2 mx-auto bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
-                >
-                  <Calendar size={18} />
-                  <span>
-                    {format(dateRange[0].startDate, "MMM dd")} -{" "}
-                    {format(dateRange[0].endDate, "MMM dd, yyyy")}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
+  {/* Share Button */}
+  <button
+    onClick={() => setShowShareModal(true)}
+    className="p-2 rounded-full border transition hover:bg-gray-100"
+    title="Share Listing"
+  >
+    <FiShare2 className="text-gray-600 text-xl" />
+  </button>
+
+  {/* Reserve Button */}
+  <button
+    onClick={handleReserveClick}
+    className="bg-olive-dark text-white font-semibold py-2 px-5 rounded-lg hover:opacity-90 transition"
+  >
+    Reserve
+  </button>
+</div>
+    </div>
+
+    {/* Guests Input */}
+    <div className="flex items-center justify-between border-t pt-3">
+      <label className="text-gray-700 font-medium">Guests:</label>
+      <input
+        type="number"
+        min="1"
+        max={listing.guests}
+        value={guestCount}
+        onChange={(e) => setGuestCount(Number(e.target.value))}
+        className="border rounded-lg px-3 py-1.5 w-24 text-center focus:ring-2 focus:ring-olive-dark outline-none"
+      />
+    </div>
+
+    {/* Calendar Button */}
+    <div className="border-t pt-3 text-center">
+      <button
+        onClick={() => setShowCalendar(true)}
+        className="flex items-center justify-center gap-2 mx-auto bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
+      >
+        <Calendar size={18} />
+        <span>
+          {format(dateRange[0].startDate, "MMM dd")} -{" "}
+          {format(dateRange[0].endDate, "MMM dd, yyyy")}
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+        {showShareModal && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-sm relative">
+      <button
+        onClick={() => setShowShareModal(false)}
+        className="absolute top-3 right-3 text-gray-500 hover:text-black"
+      >
+        <X size={22} />
+      </button>
+      <h3 className="text-xl font-bold text-olive-dark mb-4 text-center">
+        Share this listing
+      </h3>
+
+      <div className="space-y-4">
+        {/* Copy link */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={currentURL}
+            readOnly
+            className="flex-1 border px-3 py-2 rounded-lg"
+          />
+          <button
+            onClick={handleCopyLink}
+            className="bg-olive-dark text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+          >
+            Copy
+          </button>
+        </div>
+
+        {/* Social links */}
+        <div className="flex justify-center gap-4">
+          <a
+  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentURL)}&quote=${encodeURIComponent(listing.title)}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+>
+  Facebook
+</a>
+          <a
+            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(currentURL)}&text=${encodeURIComponent(listing.title)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-blue-400 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+          >
+            Twitter
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
         </div>
 
         {/* Calendar modal */}
@@ -469,7 +616,37 @@ const isDateBooked = useCallback(
               </h3>
               <DateRange
                 ranges={dateRange}
-                onChange={(item) => setDateRange([item.selection])}
+                onChange={(item) => {
+                  const { startDate, endDate } = item.selection;
+
+                  // Check if the starting date is booked
+                  const startBooked = bookedDates.some((b) => {
+                    const booked = new Date(b);
+                    return (
+                      booked.getFullYear() === startDate.getFullYear() &&
+                      booked.getMonth() === startDate.getMonth() &&
+                      booked.getDate() === startDate.getDate()
+                    );
+                  });
+
+                  // Check if any date within the selected range is booked
+                  const invalidRange = bookedDates.some((b) => {
+                    const booked = new Date(b);
+                    return booked >= startDate && booked <= endDate;
+                  });
+
+                  if (startBooked) {
+                    alert("This date is already booked. Please choose another check-in date.");
+                    return;
+                  }
+
+                  if (invalidRange) {
+                    alert("Selected range includes unavailable (booked) days. Please choose different dates.");
+                    return;
+                  }
+
+                  setDateRange([item.selection]);
+                }}
                 minDate={new Date()}
                 rangeColors={["#556B2F"]}
                 dayContentRenderer={(date) => {
@@ -481,6 +658,7 @@ const isDateBooked = useCallback(
                         textDecoration: booked ? "line-through" : "none",
                         opacity: booked ? 0.4 : 1,
                         pointerEvents: booked ? "none" : "auto",
+                        cursor: booked ? "not-allowed" : "pointer",
                       }}
                     >
                       {date.getDate()}
@@ -488,6 +666,8 @@ const isDateBooked = useCallback(
                   );
                 }}
               />
+
+
               <div className="text-center mt-4">
                 <button
                   onClick={() => setShowCalendar(false)}

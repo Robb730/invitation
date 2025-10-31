@@ -55,8 +55,14 @@ const Navbar = () => {
     <nav className="bg-olive-dark h-16 flex items-center px-5 sm:px-10 fixed top-0 w-full z-10 shadow-xl">
       {/* Left side: Logo and name */}
       <div className="flex items-center gap-x-3">
-        <img src={logo} alt="KuboHub Logo" className="h-10 w-10 sm:h-12 sm:w-12 object-contain" />
-        <h1 className="text-beige text-xl sm:text-2xl font-bold">KuboHub</h1>
+        <Link to="/" className="flex items-center gap-x-3">
+    <img
+      src={logo}
+      alt="KuboHub Logo"
+      className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+    />
+    <h1 className="text-beige text-xl sm:text-2xl font-bold">KuboHub</h1>
+  </Link>
       </div>
 
       {/* Desktop menu */}
@@ -101,6 +107,7 @@ const Navbar = () => {
               {/* Profile dropdown */}
               {profileOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-beige text-charcoal rounded-lg shadow-lg py-2 text-sm font-medium">
+                  <p className="block w-full text-left px-4 py-2 font-bold text-olive-dark">{userData.name}</p>
                   <button
                     onClick={() => navigate("/profile")}
                     className="block w-full text-left px-4 py-2 hover:bg-grayish hover:text-beige duration-300"
@@ -156,35 +163,82 @@ const Navbar = () => {
       </div>
 
       {/* Mobile dropdown menu */}
-      {menuOpen && (
-        <div className="absolute top-16 left-0 w-full bg-olive-dark flex flex-col items-center gap-y-3 py-5 shadow-md md:hidden z-50">
-          <button className="text-beige font-semibold px-4 py-2 hover:bg-grayish hover:text-beige rounded w-11/12">Homes</button>
-          <button className="text-beige font-semibold px-4 py-2 hover:bg-grayish rounded w-11/12">Experiences</button>
-          <button className="text-beige font-semibold px-4 py-2 hover:bg-grayish rounded w-11/12">Services</button>
+{menuOpen && (
+  <div
+  className={`absolute top-16 left-0 w-full bg-olive-dark flex flex-col items-center gap-y-3 py-5 shadow-md md:hidden z-50
+    transition-all duration-500 ease-in-out transform
+    ${menuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-5 pointer-events-none"}
+  `}
+>
+  {/* Navigation links */}
+  <button className="text-beige font-semibold px-4 py-2 hover:bg-grayish hover:text-beige rounded w-11/12 transition">
+    Homes
+  </button>
+  <button className="text-beige font-semibold px-4 py-2 hover:bg-grayish hover:text-beige rounded w-11/12 transition">
+    Experiences
+  </button>
+  <button className="text-beige font-semibold px-4 py-2 hover:bg-grayish hover:text-beige rounded w-11/12 transition">
+    Services
+  </button>
 
-          <Link to="/becomehost" className="w-11/12">
-            <button className="font-semibold bg-beige text-charcoal px-5 py-2 rounded w-full hover:bg-grayish hover:text-beige duration-700">
-              Be a Host
-            </button>
-          </Link>
+  <Link to="/becomehost" className="w-11/12">
+    <button className="font-semibold bg-beige text-charcoal px-5 py-2 rounded w-full hover:bg-grayish hover:text-beige duration-700 transition">
+      Be a Host
+    </button>
+  </Link>
 
-          {!user ? (
-            <button
-              onClick={() => navigate("/login")}
-              className="font-semibold bg-beige text-charcoal px-4 py-2 rounded w-11/12 hover:bg-grayish hover:text-beige duration-700"
-            >
-              Login
-            </button>
-          ) : (
-            <button
-              onClick={handleLogout}
-              className="font-semibold bg-beige text-charcoal px-4 py-2 rounded w-11/12 hover:bg-grayish hover:text-beige duration-700"
-            >
-              Logout
-            </button>
-          )}
-        </div>
-      )}
+  {/* User section */}
+  {!user ? (
+    <button
+      onClick={() => navigate("/login")}
+      className="font-semibold bg-beige text-charcoal px-4 py-2 rounded w-11/12 hover:bg-grayish hover:text-beige duration-700 transition"
+    >
+      Login
+    </button>
+  ) : (
+    <div className="w-11/12 bg-beige rounded-lg flex flex-col gap-y-2 p-3 transition">
+      {/* Profile Info */}
+      <div className="flex items-center gap-x-3 mb-2">
+        <img
+          src={userData?.profilePic || "https://via.placeholder.com/150"}
+          alt="Profile"
+          className="w-10 h-10 rounded-full object-cover"
+        />
+        <span className="font-semibold text-charcoal">{userData?.name || "User"}</span>
+      </div>
+
+      {/* Actions */}
+      <button
+        onClick={() => navigate("/profile")}
+        className="text-left px-3 py-2 w-full rounded hover:bg-grayish hover:text-beige duration-300 transition"
+      >
+        Profile Settings
+      </button>
+      <button
+        onClick={() => navigate("/reservations")}
+        className="text-left px-3 py-2 w-full rounded hover:bg-grayish hover:text-beige duration-300 transition"
+      >
+        Reservations
+      </button>
+      <button
+        onClick={() => navigate("/favorites")}
+        className="text-left px-3 py-2 w-full rounded hover:bg-grayish hover:text-beige duration-300 transition"
+      >
+        Favorites
+      </button>
+      <hr className="border-gray-300 my-1" />
+      <button
+        onClick={handleLogout}
+        className="text-left px-3 py-2 w-full rounded text-red-600 hover:bg-grayish hover:text-beige duration-300 transition"
+      >
+        Logout
+      </button>
+    </div>
+  )}
+</div>
+)}
+
+
     </nav>
   );
 };
