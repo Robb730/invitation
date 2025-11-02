@@ -7,6 +7,7 @@ import Pagination from "./homepage-comp/Pagination";
 import Footer from "./homepage-comp/Footer";
 import { useNavigate } from "react-router-dom";
 import { FaRegComment } from "react-icons/fa"; // Message bubble icon
+import { useLocation } from "react-router-dom";
 
 const Homepage = () => {
   const [user, setUser] = useState(null);
@@ -47,6 +48,19 @@ const Homepage = () => {
     }
   };
 
+  const location = useLocation();
+
+useEffect(() => {
+  if (location.state?.scrollTo) {
+    const section = document.getElementById(location.state.scrollTo);
+    if (section) {
+      setTimeout(() => {
+        section.scrollIntoView({ behavior: "smooth" });
+      }, 500);
+    }
+  }
+}, [location]);
+
   return (
     <div className="bg-beige min-h-screen">
       <Navbar user={user} />
@@ -55,12 +69,12 @@ const Homepage = () => {
       <Footer />
 
       {/* Floating Message Icon */}
-      <div
+      { user && (<div
         onClick={handleMessageClick}
         className="fixed bottom-10 right-5 bg-olive-dark text-white p-4 rounded-full shadow-lg cursor-pointer hover:opacity-90 transition"
       >
         <FaRegComment size={30} />
-      </div>
+      </div>)}
     </div>
   );
 };

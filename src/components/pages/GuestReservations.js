@@ -62,14 +62,13 @@ const GuestReservations = () => {
     setLoading(true);
 
     try {
-      // ❌ remove orderBy("createdAt", "desc") since it needs an index
       const q = query(
         collection(db, "reservations"),
         where("guestId", "==", user.uid)
       );
-
       const querySnapshot = await getDocs(q);
       const fetched = [];
+      const today = new Date();
 
       for (const resDoc of querySnapshot.docs) {
         const resData = resDoc.data();
@@ -77,21 +76,34 @@ const GuestReservations = () => {
         const listingSnap = await getDoc(listingRef);
 
         if (listingSnap.exists()) {
-          fetched.push({
+          const fullRes = {
             id: resDoc.id,
             ...resData,
             listing: { id: listingSnap.id, ...listingSnap.data() },
-          });
+          };
+
+          // 🟢 Auto-confirm logic
+          if (fullRes.checkOut) {
+            const checkOutDate = new Date(fullRes.checkOut);
+            if (checkOutDate < today && fullRes.status !== "Completed") {
+              // Update Firestore
+              const resRef = doc(db, "reservations", resDoc.id);
+              await updateDoc(resRef, { status: "Completed" });
+              fullRes.status = "Confirmed";
+            }
+          }
+
+          fetched.push(fullRes);
         }
       }
 
-      // 🟢 manually sort newest first (based on createdAt)
+      // Sort newest first
       fetched.sort((a, b) => {
         const dateA =
           a.createdAt?.seconds || new Date(a.createdAt).getTime() || 0;
         const dateB =
           b.createdAt?.seconds || new Date(b.createdAt).getTime() || 0;
-        return dateB - dateA; // newest first
+        return dateB - dateA;
       });
 
       setReservations(fetched);
@@ -104,6 +116,7 @@ const GuestReservations = () => {
 
   return () => unsubscribe();
 }, [navigate]);
+
 
   // Cancel reservation
   const handleCancel = async (res) => {

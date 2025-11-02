@@ -323,36 +323,6 @@ const ListingDetails = () => {
     }
   };
 
-  // 🔹 Final reserve confirmation
-  // const handleConfirmReservation = async () => {
-  //   const { startDate, endDate } = dateRange[0];
-  //   const user = auth.currentUser;
-
-  //   const nights = Math.max(1, differenceInDays(endDate, startDate));
-  //   const basePrice = listing.price * nights;
-  //   const total = discount ? basePrice - basePrice * (discount / 100) : basePrice;
-
-  //   try {
-  //     await addDoc(collection(db, "reservations"), {
-  //       listingId: id,
-  //       guestId: user.uid,
-  //       checkIn: format(startDate, "yyyy-MM-dd"),
-  //       checkOut: format(endDate, "yyyy-MM-dd"),
-  //       guests: guestCount,
-  //       totalAmount: total,
-  //       discountApplied: discount,
-  //       createdAt: new Date(),
-  //     });
-
-  //     alert("Reservation successful!");
-  //     setShowSummary(false);
-  //   } catch (err) {
-  //     console.error("Error creating reservation:", err);
-  //     alert("Failed to create reservation.");
-  //   }
-  // };
-
-  // 🔹 Price calculation
   const { startDate, endDate } = dateRange[0];
   const nights = Math.max(1, differenceInDays(endDate, startDate));
   const subtotal = listing.price * nights;
@@ -708,8 +678,8 @@ const ListingDetails = () => {
                       >
                         <div
                           className={`px-3 py-2 rounded-lg max-w-[70%] ${msg.senderId === user.id
-                              ? "bg-olive-dark text-white"
-                              : "bg-gray-200 text-gray-800"
+                            ? "bg-olive-dark text-white"
+                            : "bg-gray-200 text-gray-800"
                             }`}
                         >
                           <p>{msg.text}</p>
