@@ -44,6 +44,15 @@ const HostNav = ({ user, toggleSidebar }) => {
   const [bedrooms, setBedrooms] = useState("");
   const [bathrooms, setBathrooms] = useState("");
 
+  const [superCategory, setSuperCategory] = useState(""); 
+  const [showTypeModal, setShowTypeModal] = useState(false);
+
+  const CATEGORY_OPTIONS = {
+  Homes: ["Beachfront", "Cabin", "Apartment", "Resort", "Tiny Home", "Villa"],
+  Experiences: ["City Tour", "Hiking Adventure", "Cooking Class", "Cultural Show"],
+  Services: ["Chef", "Makeup Artist", "Photographer", "Tour Guide", "Driver"],
+  };
+
   const [lat, setLat] = useState(14.5995); // default center (e.g., Baliwag)
   const [lng, setLng] = useState(120.9842);
   
@@ -127,24 +136,26 @@ const HostNav = ({ user, toggleSidebar }) => {
     try {
       const uploadedURLs = await Promise.all(images.map((img) => uploadToCloudinary(img)));
       await addDoc(collection(db, "listings"), {
-        title,
-        location,
-        category,
-        status: "Draft",
-        price,
-        priceType,
-        guests,
-        bedrooms,
-        bathrooms,
-        description,
-        images: uploadedURLs,
-        promoCode: promoCode || null,
-        discount: discount ? parseFloat(discount) : null,
-        createdAt: serverTimestamp(),
-        hostId: user.uid,
-        latitude: lat,
-        longitude: lng,
-      });
+      superCategory,
+      title,
+      location,
+      category,
+      status: "Active", // or Draft
+      price,
+      priceType,
+      guests,
+      bedrooms,
+      bathrooms,
+      description,
+      images: uploadedURLs,
+      promoCode: promoCode || null,
+      discount: discount ? parseFloat(discount) : null,
+      createdAt: serverTimestamp(),
+      hostId: user.uid,
+      latitude: lat,
+      longitude: lng,
+    });
+
 
       alert("Listing saved as draft!");
       resetForm();
@@ -223,7 +234,7 @@ const HostNav = ({ user, toggleSidebar }) => {
 
         <div className="flex items-center gap-x-4">
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => setShowTypeModal(true)}
             className="bg-olive text-white font-medium px-5 py-2 rounded-xl hover:bg-olive-dark transition duration-300 hidden sm:block"
           >
             Add New Listing
@@ -264,6 +275,42 @@ const HostNav = ({ user, toggleSidebar }) => {
           </div>
         </div>
       </div>
+      {showTypeModal && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50">
+    <div className="bg-white p-6 rounded-2xl shadow-2xl w-[90%] max-w-sm text-center">
+      <h2 className="text-xl font-semibold text-olive-dark mb-3">
+        What kind of listing are you adding?
+      </h2>
+      <p className="text-sm text-gray-600 mb-5">
+        Choose one to continue.
+      </p>
+
+      <div className="flex flex-col gap-3">
+        {["Homes", "Experiences", "Services"].map((type) => (
+          <button
+            key={type}
+            onClick={() => {
+              setSuperCategory(type);
+              setShowTypeModal(false);
+              setShowModal(true);
+            }}
+            className="py-2 rounded-lg bg-olive-dark text-white hover:bg-olive transition"
+          >
+            {type}
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={() => setShowTypeModal(false)}
+        className="mt-4 text-gray-500 hover:text-olive-dark text-sm"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
 
       {/* 🟢 Modal for New Listing */}
       {/* 🟢 Modal for New Listing */}
@@ -318,19 +365,20 @@ const HostNav = ({ user, toggleSidebar }) => {
   {/* 🏷️ Category & Price */}
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
     <select
-      value={category}
-      onChange={(e) => setCategory(e.target.value)}
-      className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
-      required
-    >
-      <option value="">Select Category</option>
-      <option value="Beachfront">Beachfront</option>
-      <option value="Cabin">Cabin</option>
-      <option value="Apartment">Apartment</option>
-      <option value="Resort">Resort</option>
-      <option value="Tiny Home">Tiny Home</option>
-      <option value="Villa">Villa</option>
-    </select>
+  value={category}
+  onChange={(e) => setCategory(e.target.value)}
+  className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+  required
+>
+  <option value="">Select Category</option>
+  {superCategory &&
+    CATEGORY_OPTIONS[superCategory]?.map((cat) => (
+      <option key={cat} value={cat}>
+        {cat}
+      </option>
+    ))}
+</select>
+
 
     <div className="flex gap-2">
       <input

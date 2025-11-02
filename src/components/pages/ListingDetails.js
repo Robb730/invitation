@@ -9,6 +9,7 @@ import {
   where,
   getDocs,
   updateDoc,
+  setDoc,
 } from "firebase/firestore";
 import { db, auth } from "../../firebaseConfig";
 import Navbar from "./homepage-comp/Navbar";
@@ -24,6 +25,9 @@ import { onAuthStateChanged } from "firebase/auth";
 import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
 import { isFavorite, toggleFavorite } from "../../utils/favorites";
 import { FiShare2 } from "react-icons/fi";
+import { serverTimestamp, onSnapshot, orderBy } from "firebase/firestore";
+
+
 
 
 const ListingDetails = () => {
@@ -43,12 +47,77 @@ const ListingDetails = () => {
   const [favorite, setFavorite] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
+  const [showChat, setShowChat] = useState(false);
+  const [messageText, setMessageText] = useState("");
+
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    if (!user || !listing) return;
+
+    const chatId = `${user.id}_${listing.hostId}_${id}`;
+    const chatRef = doc(db, "chats", chatId);
+    const messagesRef = collection(chatRef, "messages");
+    const q = query(messagesRef, orderBy("createdAt", "asc"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setMessages(msgs);
+    });
+
+    return () => unsubscribe();
+  }, [user, listing, id]);
+
+
+
+
+
 
 
   const [bookedDates, setBookedDates] = useState([]);
   const [dateRange, setDateRange] = useState([
     { startDate: new Date(), endDate: new Date(Date.now() + 86400000), key: "selection" },
   ]);
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) return;
+
+    try {
+      const chatId = `${user.id}_${listing.hostId}_${id}`;
+
+      const chatRef = doc(db, "chats", chatId);
+      const chatSnap = await getDoc(chatRef);
+
+      if (!chatSnap.exists()) {
+        // create new chat document
+        await setDoc(chatRef, {
+          participants: [user.id, listing.hostId],
+          listingId: id,
+          lastMessage: messageText,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        // update existing chat's last message and timestamp
+        await updateDoc(chatRef, {
+          lastMessage: messageText,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      // add message to subcollection
+      await addDoc(collection(chatRef, "messages"), {
+        senderId: user.id,
+        text: messageText,
+        createdAt: serverTimestamp(),
+      });
+
+      setMessageText("");
+    } catch (err) {
+      console.error("Error sending message:", err);
+      alert("Failed to send message.");
+    }
+  };
+
 
 
   // Get current page URL for sharing
@@ -483,6 +552,17 @@ const ListingDetails = () => {
               </div>
             </div>
 
+            {/* Message Host Button */}
+            {user && user.id !== listing.hostId && (
+              <button
+                onClick={() => setShowChat(true)}
+                className="mt-3 w-full bg-olive-dark text-white py-2 rounded-lg hover:opacity-90 transition"
+              >
+                Message Host
+              </button>
+            )}
+
+
             {/* 💳 Reservation Box */}
             <div className="bg-white border rounded-2xl p-6 shadow-md space-y-5">
               {/* Price and Buttons Row */}
@@ -598,6 +678,69 @@ const ListingDetails = () => {
               </div>
             </div>
           )}
+
+          {showChat && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white w-[90%] max-w-md rounded-2xl p-6 relative shadow-xl">
+                <button
+                  onClick={() => setShowChat(false)}
+                  className="absolute top-3 right-3 text-gray-500 hover:text-black"
+                >
+                  <X size={22} />
+                </button>
+
+                <h3 className="text-xl font-semibold text-olive-dark mb-4 text-center">
+                  Chat with {hostName}
+                </h3>
+
+                {/* Chat messages container */}
+                <div className="border rounded-lg p-3 h-64 overflow-y-auto mb-3 bg-gray-50">
+                  {messages.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center">
+                      Start your conversation with {hostName}...
+                    </p>
+                  ) : (
+                    messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`mb-2 flex ${msg.senderId === user.id ? "justify-end" : "justify-start"
+                          }`}
+                      >
+                        <div
+                          className={`px-3 py-2 rounded-lg max-w-[70%] ${msg.senderId === user.id
+                              ? "bg-olive-dark text-white"
+                              : "bg-gray-200 text-gray-800"
+                            }`}
+                        >
+                          <p>{msg.text}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+
+                {/* Input box */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-olive-dark outline-none"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    className="bg-olive-dark text-white px-4 py-2 rounded-lg hover:opacity-90"
+                  >
+                    Send
+                  </button>
+
+                </div>
+              </div>
+            </div>
+          )}
+
 
         </div>
 
