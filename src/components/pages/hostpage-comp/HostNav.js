@@ -25,9 +25,6 @@ const HostNav = ({ user, toggleSidebar }) => {
   const [profile, setProfile] = useState("");
 
   //map container
-
-
-
   // Modal form states
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
@@ -458,15 +455,26 @@ const HostNav = ({ user, toggleSidebar }) => {
                 className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
               />
             </div>
-
-            <input
+              
+              <div className="mb-2 flex gap-2 ">
+                <input
               type="number"
-              placeholder="Price per Person"
+              placeholder="Price"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
               required
             />
+            <select
+                value={priceType}
+                onChange={(e) => setPriceType(e.target.value)}
+                className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+              >
+                <option value="per person">/ Person</option>
+                
+              </select>
+              </div>
+            
           </>
         )}
 

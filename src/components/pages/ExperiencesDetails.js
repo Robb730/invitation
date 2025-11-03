@@ -39,8 +39,7 @@ const customMarker = L.icon({
 });
 
 
-
-const ListingDetails = () => {
+const ExperiencesDetails = () => {
   const { id } = useParams();
   const [listing, setListing] = useState(null);
   const [hostName, setHostName] = useState("Unknown Host");
@@ -61,37 +60,6 @@ const ListingDetails = () => {
   const [messageText, setMessageText] = useState("");
 
   const [messages, setMessages] = useState([]);
-
-  const [ratings, setRatings] = useState([]);
-  const [averageRating, setAverageRating] = useState(0);
-
-  // 🔹 Fetch ratings for this listing
-  useEffect(() => {
-    const fetchRatings = async () => {
-      try {
-        const ratingsRef = collection(db, "ratings");
-        const q = query(ratingsRef, where("listingId", "==", id));
-        const snapshot = await getDocs(q);
-        const allRatings = snapshot.docs.map((doc) => doc.data());
-
-        // Filter only those with comments
-        const ratedWithComments = allRatings.filter(r => r.comment && r.comment.trim() !== "");
-
-        // Calculate average
-        const avg =
-          allRatings.length > 0
-            ? allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length
-            : 0;
-
-        setRatings(ratedWithComments);
-        setAverageRating(avg);
-      } catch (err) {
-        console.error("Error fetching ratings:", err);
-      }
-    };
-    fetchRatings();
-  }, [id]);
-
 
   useEffect(() => {
     if (!user || !listing) return;
@@ -192,7 +160,6 @@ const ListingDetails = () => {
     const { startDate, endDate } = getEarliestAvailableDate();
     setDateRange([{ startDate, endDate, key: "selection" }]);
   }, [bookedDates, getEarliestAvailableDate]);
-
 
   // 4️⃣ Check if a date is booked (used in dayContentRenderer)
   const isDateBooked = useCallback(
@@ -317,7 +284,7 @@ const ListingDetails = () => {
   const images = Array.isArray(listing.images)
     ? listing.images
     : [listing.images];
-  const listingDetails = `${listing.guests} guest/s • ${listing.bedrooms} bedroom/s • ${listing.bathrooms} bath/s`;
+  const listingDetails = `Schedule: ${listing.bathrooms}\n • Duration: ${listing.bedrooms}`;
 
   const handlePrev = (e) => {
     e.stopPropagation();
@@ -540,113 +507,55 @@ const ListingDetails = () => {
         {/* Two-column layout */}
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-10 mt-10">
           <div className="lg:col-span-2 bg-white rounded-2xl p-8 shadow-sm">
-            <h3 className="text-2xl font-semibold text-olive-dark mb-3 flex items-center gap-2">
-              About this place
-              {averageRating > 0 && (
-                <span className="text-yellow-500 flex items-center gap-1 text-lg font-medium">
-                  ★ {averageRating.toFixed(1)}
-                  <span className="text-gray-500 text-sm">
-                    ({ratings.length} {ratings.length === 1 ? "review" : "reviews"})
-                  </span>
-                </span>
-              )}
+            <h3 className="text-2xl font-semibold text-olive-dark mb-3">
+              About this experience
             </h3>
-
             <p className="text-gray-800 leading-relaxed">{listingDetails}</p>
             <div className="mt-6 border-t pt-5 text-gray-600">
               {listing.description}
             </div>
 
             {/* 📍 Map Section */}
-            {listing.latitude && listing.longitude && (
-              <div className="mt-10">
-                <h3 className="text-2xl font-semibold text-olive-dark mb-3">
-                  Location
-                </h3>
-                <div className="rounded-2xl overflow-hidden border shadow-md">
-                  <MapContainer
-                    center={[listing.latitude, listing.longitude]}
-                    zoom={14}
-                    scrollWheelZoom={false}
-                    style={{ height: "400px", width: "100%", zIndex: 0 }}
-                  >
-                    <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution="&copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors"
-                    />
-                    <Marker position={[listing.latitude, listing.longitude]} icon={customMarker}>
-                      <Popup>
-                        <div className="text-center">
-                          <h4 className="font-semibold text-olive-dark mb-2">
-                            {listing.title}
-                          </h4>
-                          <button
-                            onClick={() =>
-                              window.open(
-                                `https://www.google.com/maps?q=${listing.latitude},${listing.longitude}`,
-                                "_blank"
-                              )
-                            }
-                            className="bg-olive-dark text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition"
-                          >
-                            Locate
-                          </button>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  </MapContainer>
-                </div>
-              </div>
-            )}
-            {/* ⭐ Ratings & Reviews Section */}
-            {ratings.length > 0 && (
-              <div className="mt-10">
-                <h3 className="text-2xl font-semibold text-olive-dark mb-4 flex items-center gap-2">
-                  <span>Ratings & Reviews</span>
-                  <span className="text-yellow-500 flex items-center gap-1 text-lg font-medium">
-                    ★ {averageRating.toFixed(1)}
-                    <span className="text-gray-500 text-sm">
-                      ({ratings.length} {ratings.length === 1 ? "review" : "reviews"})
-                    </span>
-                  </span>
-                </h3>
-
-                <div className="space-y-4">
-                  {ratings.map((r, i) => (
-                    <div
-                      key={i}
-                      className="border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition bg-white"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-800">
-                            {r.guestName || "Guest"}
-                          </span>
-                          <span className="flex text-yellow-400">
-                            {"★".repeat(r.rating)}{" "}
-                            <span className="text-gray-300">
-                              {"★".repeat(5 - r.rating)}
-                            </span>
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {r.createdAt?.toDate
-                            ? r.createdAt.toDate().toLocaleDateString()
-                            : new Date(r.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-
-                      <p className="text-gray-700 mt-2 italic leading-relaxed">
-                        “{r.comment}”
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-
-
+                        {listing.latitude && listing.longitude && (
+                          <div className="mt-10">
+                            <h3 className="text-2xl font-semibold text-olive-dark mb-3">
+                              Location
+                            </h3>
+                            <div className="rounded-2xl overflow-hidden border shadow-md">
+                              <MapContainer
+                                center={[listing.latitude, listing.longitude]}
+                                zoom={14}
+                                scrollWheelZoom={false}
+                                style={{ height: "400px", width: "100%", zIndex: 0 }}
+                              >
+                                <TileLayer
+                                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                  attribution="&copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors"
+                                />
+                                <Marker position={[listing.latitude, listing.longitude]} icon={customMarker}>
+                                  <Popup>
+                                    <div className="text-center">
+                                      <h4 className="font-semibold text-olive-dark mb-2">
+                                        {listing.title}
+                                      </h4>
+                                      <button
+                                        onClick={() =>
+                                          window.open(
+                                            `https://www.google.com/maps?q=${listing.latitude},${listing.longitude}`,
+                                            "_blank"
+                                          )
+                                        }
+                                        className="bg-olive-dark text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition"
+                                      >
+                                        Locate
+                                      </button>
+                                    </div>
+                                  </Popup>
+                                </Marker>
+                              </MapContainer>
+                            </div>
+                          </div>
+                        )}
           </div>
 
           {/* Reservation box */}
@@ -681,7 +590,7 @@ const ListingDetails = () => {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold">
                   ₱{listing.price}
-                  <span className="text-gray-600 text-sm font-normal"> / night</span>
+                  <span className="text-gray-600 text-sm font-normal"> {listing.priceType}</span>
                 </h2>
 
                 <div className="flex items-center gap-3">
@@ -956,7 +865,7 @@ const ListingDetails = () => {
                 <p><strong>Check-in:</strong> {format(startDate, "MMM dd, yyyy")}</p>
                 <p><strong>Check-out:</strong> {format(endDate, "MMM dd, yyyy")}</p>
                 <p><strong>Nights:</strong> {nights}</p>
-                <p><strong>Price per Night:</strong> ₱{listing.price}</p>
+                <p><strong>Price {listing.priceType}:</strong> ₱{listing.price}</p>
                 <p><strong>Subtotal:</strong> ₱{subtotal.toLocaleString()}</p>
 
                 <div className="flex items-center gap-2 mt-4">
@@ -1082,4 +991,4 @@ const ListingDetails = () => {
   );
 };
 
-export default ListingDetails;
+export default ExperiencesDetails;

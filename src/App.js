@@ -13,6 +13,8 @@ import GuestReservations from './components/pages/GuestReservations'
 import FavoritesPage from './components/pages/FavoritesPage'
 import GuestProfile from './components/pages/GuestProfile'
 import GuestMessages from './components/pages/GuestMessages'
+import ExperiencesDetails from './components/pages/ExperiencesDetails';
+import ServicesDetails from './components/pages/ServicesDetails';
 
 function App() {
   const router = createBrowserRouter([
@@ -35,7 +37,9 @@ function App() {
     { path: "/favorites", element: <FavoritesPage /> },
     { path: "/profile", element: <GuestProfile /> },
     { path: "/verified", element: <Verified /> },
-    { path: "/room/:id", element: <ListingDetails /> },
+    { path: "/homes/:id", element: <ListingDetails /> },
+    { path: "/experiences/:id", element: <ExperiencesDetails /> },
+    { path: "/services/:id", element: <ServicesDetails /> },
     { path: "/messages", element: <GuestMessages /> },
     { path: "*", element: <NotFound /> },
   ]);

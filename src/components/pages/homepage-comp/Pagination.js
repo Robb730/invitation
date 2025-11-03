@@ -178,17 +178,44 @@ const Pagination = () => {
   const [listings, setListings] = useState([]);
   const navigate = useNavigate();
 
+  //homes
   const handleListingClick = (listingId) => {
     const auth = getAuth();
     const user = auth.currentUser;
 
     if (user) {
-      navigate(`/room/${listingId}`);
+      navigate(`/homes/${listingId}`);
     } else {
       alert("Please log in to view listing details.");
       navigate("/login");
     }
   };
+
+  //experiences
+  const handleExperiencesClick = (listingId) => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (user) {
+      navigate(`/experiences/${listingId}`);
+    } else {
+      alert("Please log in to view listing details.");
+      navigate("/login");
+    }
+  };
+
+  const handleServicesClick = (listingId) => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (user) {
+      navigate(`/services/${listingId}`);
+    } else {
+      alert("Please log in to view listing details.");
+      navigate("/login");
+    }
+  };
+
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -243,11 +270,11 @@ const Pagination = () => {
       </section>
 
       <section id="experiences-section">
-        <CategorySection title="Experiences" listings={experiences} onListingClick={handleListingClick} />
+        <CategorySection title="Experiences" listings={experiences} onListingClick={handleExperiencesClick} />
       </section>
 
       <section id="services-section">
-        <CategorySection title="Services" listings={services} onListingClick={handleListingClick} />
+        <CategorySection title="Services" listings={services} onListingClick={handleServicesClick} />
       </section>
     </div>
   );
