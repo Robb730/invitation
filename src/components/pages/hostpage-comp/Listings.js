@@ -133,12 +133,32 @@ const Listings = ({ user }) => {
 
       {/* Edit Modal */}
       {selectedListing && (
-        <EditModal
-          listing={selectedListing}
-          onClose={() => setSelectedListing(null)}
-          onSave={handleSaveChanges}
-        />
-      )}
+  <>
+    {selectedListing.superCategory === "Homes" && (
+      <EditModalHomes
+        listing={selectedListing}
+        onClose={() => setSelectedListing(null)}
+        onSave={handleSaveChanges}
+      />
+    )}
+    {selectedListing.superCategory === "Experiences" && (
+      <EditModalExperiences
+        listing={selectedListing}
+        onClose={() => setSelectedListing(null)}
+        onSave={handleSaveChanges}
+      />
+    )}
+    {selectedListing.superCategory === "Services" && (
+      <EditModalServices
+        listing={selectedListing}
+        onClose={() => setSelectedListing(null)}
+        onSave={handleSaveChanges}
+      />
+    )}
+  </>
+)}
+
+
     </div>
   );
 };
@@ -188,9 +208,8 @@ const ListingCard = ({ listing, onEdit }) => {
               key={idx}
               src={img}
               alt={listing.title}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-                idx === currentImageIndex ? "opacity-100" : "opacity-0"
-              }`}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${idx === currentImageIndex ? "opacity-100" : "opacity-0"
+                }`}
             />
           ))
         ) : (
@@ -230,7 +249,7 @@ const StatsCard = ({ title, count, bg, text, onClick }) => (
 );
 
 // ----- Edit Modal (mirrors Add Listing modal + MapSection) -----
-const EditModal = ({ listing, onClose, onSave }) => {
+const EditModalHomes = ({ listing, onClose, onSave }) => {
   // initialize controlled states with listing values
   const [title, setTitle] = useState(listing.title || "");
   const [category, setCategory] = useState(listing.category || "");
@@ -592,9 +611,8 @@ const EditModal = ({ listing, onClose, onSave }) => {
             <button
               type="submit"
               disabled={uploading}
-              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${
-                uploading ? "opacity-60 cursor-not-allowed" : ""
-              }`}
+              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${uploading ? "opacity-60 cursor-not-allowed" : ""
+                }`}
             >
               {uploading ? "Saving..." : "Save Changes"}
             </button>
@@ -604,5 +622,312 @@ const EditModal = ({ listing, onClose, onSave }) => {
     </div>
   );
 };
+// 🎯 EXPERIENCES MODAL
+const EditModalExperiences = ({ listing, onClose, onSave }) => {
+  const [title, setTitle] = useState(listing.title || "");
+  const [category, setCategory] = useState(listing.category || "");
+  const [price, setPrice] = useState(listing.price ?? "");
+  const [priceType, setPriceType] = useState(listing.priceType || "per person");
+  const [duration, setDuration] = useState(listing.duration || "");
+  const [schedule, setSchedule] = useState(listing.schedule || "");
+  const [promoCode, setPromoCode] = useState(listing.promoCode || "");
+  const [discount, setDiscount] = useState(listing.discount ?? "");
+  const [description, setDescription] = useState(listing.description || "");
+  const [images, setImages] = useState(Array.isArray(listing.images) ? listing.images : []);
+  const [newImages, setNewImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [lat, setLat] = useState(listing.latitude ?? 14.5995);
+  const [lng, setLng] = useState(listing.longitude ?? 120.9842);
+  const [selectedAddress, setSelectedAddress] = useState(listing.location || "");
+
+  const uploadToCloudinary = async (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("upload_preset", "kubo_unsigned");
+    const res = await fetch("https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload", { method: "POST", body: form });
+    const data = await res.json();
+    return data.secure_url;
+  };
+
+  const handleDeleteExistingImage = (index) => setImages((prev) => prev.filter((_, i) => i !== index));
+  const handleNewImages = (e) => {
+    const files = Array.from(e.target.files);
+    if (images.length + files.length > 4) {
+      alert("You can upload up to 4 images only.");
+      return;
+    }
+    setNewImages((prev) => [...prev, ...files]);
+  };
+  const handleRemoveNewImage = (index) => setNewImages((prev) => prev.filter((_, i) => i !== index));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setUploading(true);
+    let uploadedURLs = [];
+    if (newImages.length > 0) uploadedURLs = await Promise.all(newImages.map(uploadToCloudinary));
+    const updatedListing = {
+      ...listing,
+      title,
+      category,
+      price: parseFloat(price),
+      priceType,
+      duration,
+      schedule,
+      promoCode,
+      discount: discount ? parseFloat(discount) : null,
+      description,
+      images: [...images, ...uploadedURLs].slice(0, 4),
+      latitude: lat,
+      longitude: lng,
+      location: selectedAddress,
+    };
+    await onSave(updatedListing);
+    setUploading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm px-3">
+      <div className="bg-white/95 p-6 md:p-8 rounded-2xl shadow-2xl w-[95%] max-w-2xl overflow-y-auto max-h-[90vh] relative">
+        <button className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl" onClick={onClose}>×</button>
+        <h2 className="text-2xl font-semibold text-olive-dark text-center mb-2">Edit Experience</h2>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div>
+            <label className="font-medium text-olive-dark">Title</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="p-3 border rounded-lg w-full" required />
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Category</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="p-3 border rounded-lg w-full" required>
+              <option value="">Select Category</option>
+              <option value="City Tour">City Tour</option>
+              <option value="Hiking Adventure">Cooking Class</option>
+              <option value="Cultural Show">Cultural Show</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Duration</label>
+            <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} className="p-3 border rounded-lg w-full" />
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Schedule</label>
+            <input type="text" value={schedule} onChange={(e) => setSchedule(e.target.value)} className="p-3 border rounded-lg w-full" />
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Price</label>
+            <div className="flex gap-2">
+              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="p-3 border rounded-lg w-2/3" required />
+              <select value={priceType} onChange={(e) => setPriceType(e.target.value)} className="p-3 border rounded-lg w-1/3">
+                <option value="per person">/ Person</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="font-medium text-olive-dark">Promo Code</label>
+              <input type="text" value={promoCode} onChange={(e) => setPromoCode(e.target.value)} className="p-3 border rounded-lg w-full" />
+            </div>
+            <div>
+              <label className="font-medium text-olive-dark">Discount (%)</label>
+              <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} className="p-3 border rounded-lg w-full" />
+            </div>
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Description</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="p-3 border rounded-lg w-full" required />
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Images (max 4)</label>
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                {images.map((img, idx) => (
+                  <div key={idx} className="relative">
+                    <img src={img} alt="existing" className="h-24 w-full object-cover rounded-lg border" />
+                    <button type="button" onClick={() => handleDeleteExistingImage(idx)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {newImages.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                {newImages.map((file, idx) => (
+                  <div key={idx} className="relative">
+                    <img src={URL.createObjectURL(file)} alt="new" className="h-24 w-full object-cover rounded-lg border" />
+                    <button type="button" onClick={() => handleRemoveNewImage(idx)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input type="file" accept="image/*" multiple onChange={handleNewImages} className="block w-full border p-2 rounded-lg" />
+          </div>
+
+          <MapSection lat={lat} lng={lng} setLat={setLat} setLng={setLng} setSelectedAddress={setSelectedAddress} />
+
+          <button type="submit" disabled={uploading} className="bg-olive-dark text-white py-2 rounded-lg hover:bg-olive transition">
+            {uploading ? "Saving..." : "Save Changes"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const EditModalServices = ({ listing, onClose, onSave }) => {
+  const [title, setTitle] = useState(listing.title || "");
+  const [category, setCategory] = useState(listing.category || "");
+  const [price, setPrice] = useState(listing.price ?? "");
+  const [priceType, setPriceType] = useState(listing.priceType || "per hour");
+  const [experienceLevel, setExperienceLevel] = useState(listing.experienceLevel || "");
+  const [promoCode, setPromoCode] = useState(listing.promoCode || "");
+  const [discount, setDiscount] = useState(listing.discount ?? "");
+  const [description, setDescription] = useState(listing.description || "");
+  const [images, setImages] = useState(Array.isArray(listing.images) ? listing.images : []);
+  const [newImages, setNewImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [lat, setLat] = useState(listing.latitude ?? 14.5995);
+  const [lng, setLng] = useState(listing.longitude ?? 120.9842);
+  const [selectedAddress, setSelectedAddress] = useState(listing.location || "");
+
+  const uploadToCloudinary = async (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("upload_preset", "kubo_unsigned");
+    const res = await fetch("https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload", { method: "POST", body: form });
+    const data = await res.json();
+    return data.secure_url;
+  };
+
+  const handleDeleteExistingImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
+  const handleNewImages = (e) => {
+    const files = Array.from(e.target.files);
+    if (images.length + files.length > 4) return alert("You can upload up to 4 images only.");
+    setNewImages((prev) => [...prev, ...files]);
+  };
+  const handleRemoveNewImage = (i) => setNewImages((prev) => prev.filter((_, idx) => idx !== i));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setUploading(true);
+    const uploadedURLs = newImages.length > 0 ? await Promise.all(newImages.map(uploadToCloudinary)) : [];
+    const updatedListing = {
+      ...listing,
+      title,
+      category,
+      price: parseFloat(price),
+      priceType,
+      experienceLevel,
+      promoCode,
+      discount: discount ? parseFloat(discount) : null,
+      description,
+      images: [...images, ...uploadedURLs].slice(0, 4),
+      latitude: lat,
+      longitude: lng,
+      location: selectedAddress,
+    };
+    await onSave(updatedListing);
+    setUploading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm px-3">
+      <div className="bg-white/95 p-6 md:p-8 rounded-2xl shadow-2xl w-[95%] max-w-2xl overflow-y-auto max-h-[90vh] relative">
+        <button className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl" onClick={onClose}>×</button>
+        <h2 className="text-2xl font-semibold text-olive-dark text-center mb-2">Edit Service</h2>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div>
+            <label className="font-medium text-olive-dark">Title</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="p-3 border rounded-lg w-full" required />
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Category</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="p-3 border rounded-lg w-full" required>
+              <option value="">Select Category</option>
+              <option value="Chef">Chef</option>
+              <option value="Makeup Artist">Makeup Artist</option>
+              <option value="Photographer">Photographer</option>
+              <option value="Tour Guide">Tour Guide</option>
+              <option value="Driver">Driver</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Experience Level</label>
+            <input type="text" value={experienceLevel} onChange={(e) => setExperienceLevel(e.target.value)} className="p-3 border rounded-lg w-full" />
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Price</label>
+            <div className="flex gap-2">
+              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="p-3 border rounded-lg w-2/3" required />
+              <select value={priceType} onChange={(e) => setPriceType(e.target.value)} className="p-3 border rounded-lg w-1/3">
+                <option value="per hour">/ Hour</option>
+                <option value="per day">/ Day</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="font-medium text-olive-dark">Promo Code</label>
+              <input type="text" value={promoCode} onChange={(e) => setPromoCode(e.target.value)} className="p-3 border rounded-lg w-full" />
+            </div>
+            <div>
+              <label className="font-medium text-olive-dark">Discount (%)</label>
+              <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} className="p-3 border rounded-lg w-full" />
+            </div>
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Description</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="p-3 border rounded-lg w-full" required />
+          </div>
+
+          <div>
+            <label className="font-medium text-olive-dark">Images (max 4)</label>
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                {images.map((img, i) => (
+                  <div key={i} className="relative">
+                    <img src={img} alt="existing" className="h-24 w-full object-cover rounded-lg border" />
+                    <button type="button" onClick={() => handleDeleteExistingImage(i)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {newImages.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                {newImages.map((file, i) => (
+                  <div key={i} className="relative">
+                    <img src={URL.createObjectURL(file)} alt="preview" className="h-24 w-full object-cover rounded-lg border" />
+                    <button type="button" onClick={() => handleRemoveNewImage(i)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input type="file" accept="image/*" multiple onChange={handleNewImages} className="block w-full border p-2 rounded-lg" />
+          </div>
+
+          <MapSection lat={lat} lng={lng} setLat={setLat} setLng={setLng} setSelectedAddress={setSelectedAddress} />
+
+          <button type="submit" disabled={uploading} className="bg-olive-dark text-white py-2 rounded-lg hover:bg-olive transition">
+            {uploading ? "Saving..." : "Save Changes"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+
+
 
 export default Listings;

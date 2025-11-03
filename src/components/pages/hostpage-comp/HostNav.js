@@ -53,6 +53,14 @@ const HostNav = ({ user, toggleSidebar }) => {
   const [lat, setLat] = useState(14.5995); // default center (e.g., Baliwag)
   const [lng, setLng] = useState(120.9842);
 
+  const [duration, setDuration] = useState(""); // for Experiences
+  const [schedule, setSchedule] = useState("");
+
+  const [experienceLevel, setExperienceLevel] = useState(""); // for Services
+
+  const [maxGuests, setMaxGuests] = useState("");
+
+
 
 
 
@@ -171,6 +179,7 @@ const HostNav = ({ user, toggleSidebar }) => {
     if (images.length > 4) return alert("You can upload up to 4 images only.");
 
     try {
+      if(superCategory === "Homes") {
       setUploading(true);
       const uploadedURLs = await Promise.all(images.map((img) => uploadToCloudinary(img)));
       await addDoc(collection(db, "listings"), {
@@ -194,6 +203,53 @@ const HostNav = ({ user, toggleSidebar }) => {
         latitude: lat,
         longitude: lng,
       });
+    } else if (superCategory === "Experiences") {
+      
+      setUploading(true);
+      const uploadedURLs = await Promise.all(images.map((img) => uploadToCloudinary(img)));
+      await addDoc(collection(db, "listings"), {
+        superCategory,
+        title,
+        location,
+        category,
+        status: "Active",
+        price,
+        priceType,
+        duration,
+        schedule,
+        maxGuests: maxGuests ? parseInt(maxGuests) : null,
+        description,
+        images: uploadedURLs,
+        promoCode: promoCode || null,
+        discount: discount ? parseFloat(discount) : null,
+        createdAt: serverTimestamp(),
+        hostId: user.uid,
+
+        latitude: lat,
+        longitude: lng,});
+    } else if (superCategory === "Services") 
+      {
+        setUploading(true);
+      const uploadedURLs = await Promise.all(images.map((img) => uploadToCloudinary(img)));
+      await addDoc(collection(db, "listings"), {
+        superCategory,
+        title,
+        location,
+        category,
+        status: "Active",
+        price,
+        priceType,
+        experienceLevel,
+        description,
+        images: uploadedURLs,
+        promoCode: promoCode || null,
+        discount: discount ? parseFloat(discount) : null,
+        createdAt: serverTimestamp(),
+        hostId: user.uid,
+
+        latitude: lat,
+        longitude: lng,});
+      }
 
       alert("Listing published successfully!");
       resetForm();
@@ -443,18 +499,26 @@ const HostNav = ({ user, toggleSidebar }) => {
               <input
                 type="text"
                 placeholder="Duration (e.g., 3 hours)"
-                value={bedrooms}
-                onChange={(e) => setBedrooms(e.target.value)}
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
                 className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
               />
               <input
                 type="text"
                 placeholder="Schedule (e.g., Weekends Only)"
-                value={bathrooms}
-                onChange={(e) => setBathrooms(e.target.value)}
+                value={schedule}
+                onChange={(e) => setSchedule(e.target.value)}
                 className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
               />
             </div>
+            {/* NEW FIELD for guest capacity */}
+<input
+  type="number"
+  placeholder="Max Guests (e.g., 30)"
+  value={maxGuests}
+  onChange={(e) => setMaxGuests(e.target.value)}
+  className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
+/>
               
               <div className="mb-2 flex gap-2 ">
                 <input
@@ -497,8 +561,8 @@ const HostNav = ({ user, toggleSidebar }) => {
               <input
                 type="text"
                 placeholder="Experience Level (e.g., 5 years)"
-                value={bedrooms}
-                onChange={(e) => setBedrooms(e.target.value)}
+                value={experienceLevel}
+                onChange={(e) => setExperienceLevel(e.target.value)}
                 className="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-olive-dark outline-none"
               />
               <select

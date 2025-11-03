@@ -18,7 +18,7 @@ import { ChevronLeft, ChevronRight, X, Calendar, Tag } from "lucide-react";
 import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
-import { format, differenceInDays } from "date-fns";
+import { format} from "date-fns";
 import { PayPalButtons } from "@paypal/react-paypal-js";
 import axios from "axios";
 import { onAuthStateChanged } from "firebase/auth";
@@ -26,6 +26,9 @@ import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
 import { isFavorite, toggleFavorite } from "../../utils/favorites";
 import { FiShare2 } from "react-icons/fi";
 import { serverTimestamp, onSnapshot, orderBy } from "firebase/firestore";
+
+
+
 
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -52,6 +55,7 @@ const ExperiencesDetails = () => {
   const [discount, setDiscount] = useState(0);
   const [user, setUser] = useState("");
 
+  const [remainingCapacity, setRemainingCapacity] = useState(null);
 
   const [favorite, setFavorite] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -284,7 +288,7 @@ const ExperiencesDetails = () => {
   const images = Array.isArray(listing.images)
     ? listing.images
     : [listing.images];
-  const listingDetails = `Schedule: ${listing.bathrooms}\n • Duration: ${listing.bedrooms}`;
+  const listingDetails = `Schedule: ${listing.schedule}\n • Duration: ${listing.duration} hours`;
 
   const handlePrev = (e) => {
     e.stopPropagation();
@@ -311,10 +315,12 @@ const ExperiencesDetails = () => {
       alert("Please select valid dates.");
       return;
     }
-    if (format(startDate, "MMM dd, yyyy") === format(endDate, "MMM dd, yyyy")) {
-      alert("Check-out date must be after check-in date.");
-      return;
-    }
+    if (listing.maxGuests && guestCount > remainingCapacity) {
+  alert(`Only ${remainingCapacity} spots left for that date!`);
+  return;
+}
+
+
     setShowSummary(true);
   };
 
@@ -333,8 +339,8 @@ const ExperiencesDetails = () => {
   };
 
   const { startDate, endDate } = dateRange[0];
-  const nights = Math.max(1, differenceInDays(endDate, startDate));
-  const subtotal = listing.price * nights;
+  
+  const subtotal = listing.price * guestCount;
   const total = discount ? subtotal - subtotal * (discount / 100) : subtotal;
 
   const handleFavoriteToggle = async () => {
@@ -516,46 +522,46 @@ const ExperiencesDetails = () => {
             </div>
 
             {/* 📍 Map Section */}
-                        {listing.latitude && listing.longitude && (
-                          <div className="mt-10">
-                            <h3 className="text-2xl font-semibold text-olive-dark mb-3">
-                              Location
-                            </h3>
-                            <div className="rounded-2xl overflow-hidden border shadow-md">
-                              <MapContainer
-                                center={[listing.latitude, listing.longitude]}
-                                zoom={14}
-                                scrollWheelZoom={false}
-                                style={{ height: "400px", width: "100%", zIndex: 0 }}
-                              >
-                                <TileLayer
-                                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                  attribution="&copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors"
-                                />
-                                <Marker position={[listing.latitude, listing.longitude]} icon={customMarker}>
-                                  <Popup>
-                                    <div className="text-center">
-                                      <h4 className="font-semibold text-olive-dark mb-2">
-                                        {listing.title}
-                                      </h4>
-                                      <button
-                                        onClick={() =>
-                                          window.open(
-                                            `https://www.google.com/maps?q=${listing.latitude},${listing.longitude}`,
-                                            "_blank"
-                                          )
-                                        }
-                                        className="bg-olive-dark text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition"
-                                      >
-                                        Locate
-                                      </button>
-                                    </div>
-                                  </Popup>
-                                </Marker>
-                              </MapContainer>
-                            </div>
-                          </div>
-                        )}
+            {listing.latitude && listing.longitude && (
+              <div className="mt-10">
+                <h3 className="text-2xl font-semibold text-olive-dark mb-3">
+                  Location
+                </h3>
+                <div className="rounded-2xl overflow-hidden border shadow-md">
+                  <MapContainer
+                    center={[listing.latitude, listing.longitude]}
+                    zoom={14}
+                    scrollWheelZoom={false}
+                    style={{ height: "400px", width: "100%", zIndex: 0 }}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution="&copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors"
+                    />
+                    <Marker position={[listing.latitude, listing.longitude]} icon={customMarker}>
+                      <Popup>
+                        <div className="text-center">
+                          <h4 className="font-semibold text-olive-dark mb-2">
+                            {listing.title}
+                          </h4>
+                          <button
+                            onClick={() =>
+                              window.open(
+                                `https://www.google.com/maps?q=${listing.latitude},${listing.longitude}`,
+                                "_blank"
+                              )
+                            }
+                            className="bg-olive-dark text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition"
+                          >
+                            Locate
+                          </button>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  </MapContainer>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Reservation box */}
@@ -630,6 +636,14 @@ const ExperiencesDetails = () => {
                   className="border rounded-lg px-3 py-1.5 w-24 text-center focus:ring-2 focus:ring-olive-dark outline-none"
                 />
               </div>
+              {listing.maxGuests && (
+                <p className="text-sm text-gray-600 mt-1 text-center">
+                  {remainingCapacity !== null
+                    ? `Available slots: ${remainingCapacity} out of ${listing.maxGuests}`
+                    : `Maximum capacity: ${listing.maxGuests} guests`}
+                </p>
+              )}
+
 
               {/* Calendar Button */}
               <div className="border-t pt-3 text-center">
@@ -639,10 +653,10 @@ const ExperiencesDetails = () => {
                 >
                   <Calendar size={18} />
                   <span>
-                    {format(dateRange[0].startDate, "MMM dd")} -{" "}
-                    {format(dateRange[0].endDate, "MMM dd, yyyy")}
+                    {format(dateRange[0].startDate, "MMM dd, yyyy")}
                   </span>
                 </button>
+
               </div>
             </div>
           </div>
@@ -776,43 +790,77 @@ const ExperiencesDetails = () => {
                 <X size={22} />
               </button>
               <h3 className="text-lg font-semibold text-olive-dark mb-3 text-center">
-                Select Dates
+                Select Date
               </h3>
+              <style>
+                {`
+    /* Hide the extra end-date display in the header */
+    .rdrDateRangeWrapper .rdrDefinedRangesWrapper {
+      display: none;
+    }
+    .rdrMonthAndYearPickers {
+      justify-content: center;
+    }
+    .rdrInputRanges {
+      display: none;
+    }
+    /* Hide the top start-end date labels */
+    .rdrDateDisplayWrapper {
+      display: none !important;
+    }
+  `}
+              </style>
               <DateRange
                 ranges={dateRange}
-                onChange={(item) => {
-                  const { startDate, endDate } = item.selection;
+                onChange={async (item) => {
+                  const selectedDate = item.selection.startDate;
 
-                  // Check if the starting date is booked
-                  const startBooked = bookedDates.some((b) => {
+                  // Check if selected date is booked
+                  const isBooked = bookedDates.some((b) => {
                     const booked = new Date(b);
                     return (
-                      booked.getFullYear() === startDate.getFullYear() &&
-                      booked.getMonth() === startDate.getMonth() &&
-                      booked.getDate() === startDate.getDate()
+                      booked.getFullYear() === selectedDate.getFullYear() &&
+                      booked.getMonth() === selectedDate.getMonth() &&
+                      booked.getDate() === selectedDate.getDate()
                     );
                   });
 
-                  // Check if any date within the selected range is booked
-                  const invalidRange = bookedDates.some((b) => {
-                    const booked = new Date(b);
-                    return booked >= startDate && booked <= endDate;
+                  if (isBooked) {
+                    alert("This date is already booked. Please choose another.");
+                    return;
+                  }
+
+                  // Force single date only
+                  setDateRange([
+                    {
+                      startDate: selectedDate,
+                      endDate: selectedDate,
+                      key: "selection",
+                    },
+                  ]);
+                  const bookingsRef = collection(db, "reservations");
+                  const q = query(
+                    bookingsRef,
+                    where("listingId", "==", id),
+                    where("bookedDate", "==", format(selectedDate, "yyyy-MM-dd"))
+                  );
+                  const snapshot = await getDocs(q);
+                  let totalGuestsBooked = 0;
+                  snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    totalGuestsBooked += data.guests || 0;
                   });
 
-                  if (startBooked) {
-                    alert("This date is already booked. Please choose another check-in date.");
-                    return;
-                  }
+                  // Calculate remaining slots
+                  const remaining = listing.maxGuests
+                    ? listing.maxGuests - totalGuestsBooked
+                    : null;
 
-                  if (invalidRange) {
-                    alert("Selected range includes unavailable (booked) days. Please choose different dates.");
-                    return;
-                  }
-
-                  setDateRange([item.selection]);
+                  setRemainingCapacity(remaining);
                 }}
+                moveRangeOnFirstSelection={false}
                 minDate={new Date()}
-                rangeColors={["#556B2F"]}
+                rangeColors={["#16a34a"]}
                 dayContentRenderer={(date) => {
                   const booked = isDateBooked(date);
                   return (
@@ -862,9 +910,7 @@ const ExperiencesDetails = () => {
                 <p><strong>Guest Name:</strong> {user.name}</p>
                 <p><strong>Guest Email:</strong> {user.email}</p>
                 <p><strong>Guests:</strong> {guestCount}</p>
-                <p><strong>Check-in:</strong> {format(startDate, "MMM dd, yyyy")}</p>
-                <p><strong>Check-out:</strong> {format(endDate, "MMM dd, yyyy")}</p>
-                <p><strong>Nights:</strong> {nights}</p>
+                <p><strong>Booked date:</strong> {format(startDate, "MMM dd, yyyy")}</p>
                 <p><strong>Price {listing.priceType}:</strong> ₱{listing.price}</p>
                 <p><strong>Subtotal:</strong> ₱{subtotal.toLocaleString()}</p>
 
@@ -947,18 +993,16 @@ const ExperiencesDetails = () => {
 
                       console.log("email sent to: " + user.email);
                       await axios.post(
-                        "https://custom-email-backend.onrender.com/send-reservation-receipt",
+                        "https://custom-email-backend.onrender.com/send-reservation-receipt-experiences",
                         {
                           guestEmail: user.email,
                           guestName: user.name,
                           listingTitle: listing.title,
                           hostName: hostName,
-                          checkIn: format(startDate, "MMM dd, yyyy"),
-                          checkOut: format(endDate, "MMM dd, yyyy"),
+                          bookedDate: format(startDate, "MMM dd, yyyy"),
                           totalAmount: total,
                           guests: guestCount,
                           reservationId: order.id,
-                          nights: nights,
                         },
                         {
                           headers: {
