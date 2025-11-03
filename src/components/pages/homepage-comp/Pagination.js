@@ -1,12 +1,24 @@
+/* --- PAGINATION COMPONENT --- */
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { collection, getDocs, query, orderBy, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../../../firebaseConfig";
 import { getAuth } from "firebase/auth";
 import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
 import { isFavorite, toggleFavorite } from "../../../utils/favorites";
+import { Home, Sun, Wrench } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "react-router-dom";
 
-// --- SlideshowCard Component (unchanged)
+
+/* --- SlideshowCard --- */
 const SlideshowCard = ({ listing, onListingClick }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -42,51 +54,65 @@ const SlideshowCard = ({ listing, onListingClick }) => {
     e.stopPropagation();
     const newState = await toggleFavorite(listing.id);
     setFavorite(newState);
-    setFavMessage(newState ? "Added to Favorites" : "Removed from Favorites");
+    setFavMessage(
+      newState ? "Added to Favorites ❤️" : "Removed from Favorites 💔"
+    );
     setShowModal(true);
     setTimeout(() => setShowModal(false), 1500);
   };
 
   return (
     <div
-      className="relative bg-white w-full max-w-[440px] rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] duration-300 overflow-hidden cursor-pointer flex flex-col"
+      className="relative w-full max-w-[420px] bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-500 hover:-translate-y-1 cursor-pointer group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
         setCurrentImageIndex(0);
       }}
+      onClick={() => onListingClick(listing.id)}
     >
-      <div className="h-48 sm:h-56 md:h-60 w-full overflow-hidden relative">
-        <img
-          src={images[currentImageIndex]}
-          alt={listing.title}
-          className="w-full h-full object-cover transition-transform duration-500"
-        />
+      {/* --- Image --- */}
+      <div className="h-52 sm:h-60 relative overflow-hidden rounded-t-2xl">
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={currentImageIndex}
+            src={images[currentImageIndex]}
+            alt={listing.title}
+            initial={{ opacity: 0, scale: 1.05 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{
+              duration: 1.5,
+              ease: [0.25, 0.1, 0.25, 1], // smooth cubic-bezier curve
+            }}
+            className="absolute w-full h-full object-cover"
+          />
+        </AnimatePresence>
 
-        {isHovered && (
-          <button
-            onClick={handleFavoriteClick}
-            className="absolute top-3 right-3 bg-white bg-opacity-80 rounded-full p-2 hover:bg-opacity-100 transition"
-          >
-            {favorite ? (
-              <AiFillHeart className="text-olive text-xl" />
-            ) : (
-              <AiOutlineHeart className="text-gray-500 text-xl" />
-            )}
-          </button>
-        )}
+        {/* Favorite Button */}
+        <button
+          onClick={handleFavoriteClick}
+          className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-all duration-300"
+        >
+          {favorite ? (
+            <AiFillHeart className="text-olive-dark text-xl" />
+          ) : (
+            <AiOutlineHeart className="text-gray-600 text-xl" />
+          )}
+        </button>
       </div>
 
-      <div className="flex flex-col justify-between p-3 sm:p-4 flex-grow">
+      {/* --- Details --- */}
+      <div className="p-4 flex flex-col justify-between">
         <div>
-          <h3 className="text-base sm:text-lg font-semibold text-olive-dark leading-tight line-clamp-1">
+          <h3 className="text-lg font-semibold text-olive-dark truncate">
             {listing.title}
           </h3>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1 line-clamp-1">
+          <p className="text-gray-500 text-sm mt-1 truncate">
             {listing.location}
           </p>
           {listing.hostName && (
-            <p className="text-xs text-gray-600 mt-2 italic line-clamp-1">
+            <p className="text-xs text-gray-600 mt-2 italic truncate">
               Hosted by{" "}
               <span className="font-medium text-olive-dark">
                 {listing.hostName}
@@ -96,24 +122,23 @@ const SlideshowCard = ({ listing, onListingClick }) => {
         </div>
 
         <div className="flex items-center justify-between mt-4">
-          <p className="text-base sm:text-lg font-bold text-olive-dark">
-            ₱{listing.price} /{" "}
-            <span className="font-medium text-gray-500 text-base">
-              {listing.priceType}
+          <p className="text-lg font-bold text-olive-dark">
+            ₱{listing.price}
+            <span className="text-gray-500 font-medium text-sm">
+              {" "}
+              / {listing.priceType}
             </span>
           </p>
-          <button
-            onClick={() => onListingClick(listing.id)}
-            className="bg-olive-dark text-white text-xs sm:text-sm px-3 py-2 rounded-full hover:bg-olive duration-300"
-          >
+          <button className="bg-olive-dark text-white text-xs sm:text-sm px-4 py-2.5 rounded-full hover:bg-olive transition-all duration-300">
             View Details
           </button>
         </div>
       </div>
 
+      {/* --- Modal --- */}
       {showModal && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-          <div className="bg-white px-6 py-3 rounded-lg shadow-md text-olive-dark font-semibold">
+        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+          <div className="bg-white px-5 py-3 rounded-xl shadow-lg text-olive-dark font-medium">
             {favMessage}
           </div>
         </div>
@@ -122,33 +147,38 @@ const SlideshowCard = ({ listing, onListingClick }) => {
   );
 };
 
-// --- CategorySection Component (unchanged)
+/* --- Category Section (modern layout) --- */
 const CategorySection = ({ title, listings, onListingClick }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const listingsPerPage = 6;
   const totalPages = Math.ceil(listings.length / listingsPerPage);
   const startIndex = (currentPage - 1) * listingsPerPage;
-  const currentListings = listings.slice(startIndex, startIndex + listingsPerPage);
+  const currentListings = listings.slice(
+    startIndex,
+    startIndex + listingsPerPage
+  );
 
   if (listings.length === 0) return null;
 
   return (
-    <div className="w-full mb-10">
-      {/* 🔹 Header + Pagination inline */}
-      <div className="flex flex-col sm:flex-row items-center justify-between px-6 sm:px-14 py-4">
-        <h1 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-0">{title}</h1>
+    <div className="w-full mb-14">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-center px-6 sm:px-14 mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold text-charcoal flex items-center gap-3">
+          {title}
+        </h2>
 
-        {/* Pagination Buttons (top-right) */}
+        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 mt-4 sm:mt-0">
             {Array.from({ length: totalPages }).map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentPage(index + 1)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold text-sm sm:text-base transition-all duration-300 ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold text-sm transition-all duration-300 ${
                   currentPage === index + 1
-                    ? "bg-olive-dark text-white"
-                    : "bg-gray-300 text-gray-700 hover:bg-gray-400"
+                    ? "bg-olive-dark text-white shadow-md"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
                 {index + 1}
@@ -158,8 +188,8 @@ const CategorySection = ({ title, listings, onListingClick }) => {
         )}
       </div>
 
-      {/* 🔹 Listings Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4 sm:px-10 py-6 justify-items-center">
+      {/* Listings Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 px-4 sm:px-10 justify-items-center">
         {currentListings.map((listing) => (
           <SlideshowCard
             key={listing.id}
@@ -168,54 +198,58 @@ const CategorySection = ({ title, listings, onListingClick }) => {
           />
         ))}
       </div>
+
+      {/* Bottom Pagination (for mobile usability) */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-10 gap-2">
+          {Array.from({ length: totalPages }).map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentPage(index + 1)}
+              className={`px-3 py-1.5 rounded-full font-semibold text-sm transition-all duration-300 ${
+                currentPage === index + 1
+                  ? "bg-olive-dark text-white shadow-md"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              {index + 1}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-
-// --- Main Pagination Component
+/* --- Main Pagination Component --- */
 const Pagination = () => {
   const [listings, setListings] = useState([]);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  //homes
-  const handleListingClick = (listingId) => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (user) {
-      navigate(`/homes/${listingId}`);
-    } else {
-      alert("Please log in to view listing details.");
-      navigate("/login");
+  useEffect(() => {
+    if (location.state?.scrollTo) {
+      const section = document.getElementById(location.state.scrollTo);
+      if (section) {
+        setTimeout(() => {
+          section.scrollIntoView({ behavior: "smooth" });
+        }, 1500); // delay to wait for page render
+      }
     }
+  }, [location]);
+
+  const handleListingClick = (id) => {
+    const user = getAuth().currentUser;
+    user ? navigate(`/homes/${id}`) : navigate("/login");
   };
-
-  //experiences
-  const handleExperiencesClick = (listingId) => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (user) {
-      navigate(`/experiences/${listingId}`);
-    } else {
-      alert("Please log in to view listing details.");
-      navigate("/login");
-    }
+  const handleExperiencesClick = (id) => {
+    const user = getAuth().currentUser;
+    user ? navigate(`/experiences/${id}`) : navigate("/login");
   };
-
-  const handleServicesClick = (listingId) => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (user) {
-      navigate(`/services/${listingId}`);
-    } else {
-      alert("Please log in to view listing details.");
-      navigate("/login");
-    }
+  const handleServicesClick = (id) => {
+    const user = getAuth().currentUser;
+    user ? navigate(`/services/${id}`) : navigate("/login");
   };
-
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -223,39 +257,23 @@ const Pagination = () => {
         const listingsRef = collection(db, "listings");
         const q = query(listingsRef, orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
-
-        const listingsWithHosts = await Promise.all(
-          snapshot.docs.map(async (docSnap) => {
-            const listing = { id: docSnap.id, ...docSnap.data() };
-
-            if (listing.hostId) {
-              try {
-                const hostRef = doc(db, "users", listing.hostId);
-                const hostSnap = await getDoc(hostRef);
-                listing.hostName = hostSnap.exists()
-                  ? hostSnap.data().fullName || hostSnap.data().name || "Unknown Host"
-                  : "Unknown Host";
-              } catch {
-                listing.hostName = "Unknown Host";
-              }
-            } else {
-              listing.hostName = "Unknown Host";
+        const data = await Promise.all(
+          snapshot.docs.map(async (d) => {
+            const l = { id: d.id, ...d.data() };
+            if (l.hostId) {
+              const h = await getDoc(doc(db, "users", l.hostId));
+              l.hostName = h.exists()
+                ? h.data().fullName || h.data().name || "Unknown Host"
+                : "Unknown Host";
             }
-
-            return listing;
+            return l;
           })
         );
-
-        const activeListings = listingsWithHosts.filter(
-          (listing) => listing.status === "Active"
-        );
-
-        setListings(activeListings);
-      } catch (error) {
-        console.error("Error fetching listings:", error);
+        setListings(data.filter((l) => l.status === "Active"));
+      } catch (err) {
+        console.error("Error fetching listings:", err);
       }
     };
-
     fetchListings();
   }, []);
 
@@ -264,18 +282,39 @@ const Pagination = () => {
   const services = listings.filter((l) => l.superCategory === "Services");
 
   return (
-    <div className="w-full">
-      <section id="homes-section">
-        <CategorySection title="Homes" listings={homes} onListingClick={handleListingClick} />
-      </section>
+    <div className="w-full bg-beige min-h-screen py-10 space-y-12">
+      <CategorySection
+        title={
+          <div className="flex items-center gap-2 text-olive-dark" id="homes-section">
+            <Home size={26} strokeWidth={2.5} />
+            <span>Homes</span>
+          </div>
+        }
+        listings={homes}
+        onListingClick={handleListingClick}
+      />
 
-      <section id="experiences-section">
-        <CategorySection title="Experiences" listings={experiences} onListingClick={handleExperiencesClick} />
-      </section>
+      <CategorySection
+        title={
+          <div className="flex items-center gap-2 text-olive-dark" id="experiences-section">
+            <Sun size={26} strokeWidth={2.5} />
+            <span>Experiences</span>
+          </div>
+        }
+        listings={experiences}
+        onListingClick={handleExperiencesClick}
+      />
 
-      <section id="services-section">
-        <CategorySection title="Services" listings={services} onListingClick={handleServicesClick} />
-      </section>
+      <CategorySection
+        title={
+          <div className="flex items-center gap-2 text-olive-dark" id="services-section">
+            <Wrench size={26} strokeWidth={2.5} />
+            <span>Services</span>
+          </div>
+        }
+        listings={services}
+        onListingClick={handleServicesClick}
+      />
     </div>
   );
 };

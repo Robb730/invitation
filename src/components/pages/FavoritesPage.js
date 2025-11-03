@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "./homepage-comp/Navbar";
 import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
-import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  query,
+  where,
+} from "firebase/firestore";
 import { db, auth } from "../../firebaseConfig";
 import { isFavorite, toggleFavorite } from "../../utils/favorites";
-import {useNavigate} from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
@@ -24,6 +31,31 @@ const FavoritesPage = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleViewListing = async (listingId) => {
+    try {
+      const listingRef = doc(db, "listings", listingId);
+      const listingSnap = await getDoc(listingRef);
+
+      if (listingSnap.exists()) {
+        const listingData = { id: listingSnap.id, ...listingSnap.data() };
+
+        if (listingData.superCategory === "Homes") {
+          navigate(`/homes/${listingId}`);
+        } else if (listingData.superCategory === "Experiences") {
+          navigate(`/experiences/${listingId}`);
+        } else if (listingData.superCategory === "Services") {
+          navigate(`/services/${listingId}`);
+        } else {
+          console.error("Unknown superCategory:", listingData.superCategory);
+        }
+      } else {
+        console.error("No such listing!");
+      }
+    } catch (error) {
+      console.error("Error fetching listing:", error);
+    }
+  };
 
   // Fetch favorite listings
   useEffect(() => {
@@ -131,26 +163,25 @@ const FavoritesPage = () => {
                 </div>
 
                 <div className="p-4 flex flex-col gap-y-2">
-  <h2 className="text-lg font-semibold text-gray-800 line-clamp-1">
-    {listing.title}
-  </h2>
-  <p className="text-sm text-gray-500 line-clamp-1">
-    {listing.location || "Unknown Location"}
-  </p>
-  <p className="text-base font-bold text-gray-800 mt-2">
-    ₱{listing.price} /{" "}
-    <span className="font-medium text-gray-500">
-      {listing.priceType}
-    </span>
-  </p>
-  <button
-    onClick={() => navigate(`/room/${listing.id}`)} // navigate to listing details
-    className="mt-3 bg-olive-dark text-beige font-semibold px-4 py-2 rounded-xl text-sm hover:bg-olive transition-all duration-300 shadow-md hover:shadow-lg"
-  >
-    View Listing
-  </button>
-</div>
-
+                  <h2 className="text-lg font-semibold text-gray-800 line-clamp-1">
+                    {listing.title}
+                  </h2>
+                  <p className="text-sm text-gray-500 line-clamp-1">
+                    {listing.location || "Unknown Location"}
+                  </p>
+                  <p className="text-base font-bold text-gray-800 mt-2">
+                    ₱{listing.price} /{" "}
+                    <span className="font-medium text-gray-500">
+                      {listing.priceType}
+                    </span>
+                  </p>
+                  <button
+                    onClick={() => {handleViewListing(listing.id)}} // navigate to listing details
+                    className="mt-3 bg-olive-dark text-beige font-semibold px-4 py-2 rounded-xl text-sm hover:bg-olive transition-all duration-300 shadow-md hover:shadow-lg"
+                  >
+                    View Listing
+                  </button>
+                </div>
               </div>
             ))}
           </div>

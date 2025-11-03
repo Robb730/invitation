@@ -988,7 +988,7 @@ const ExperiencesDetails = () => {
 
                       console.log("email sent to: " + user.email);
                       await axios.post(
-                        "http://localhost:5000/send-reservation-receipt-experiences",
+                        "https://custom-email-backend.onrender.com/send-reservation-receipt-experiences",
                         {
                           guestEmail: user.email,
                           guestName: user.name,

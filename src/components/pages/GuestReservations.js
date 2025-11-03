@@ -186,7 +186,7 @@ const GuestReservations = () => {
       );
     } else if(res.listing.superCategory === "Experiences") {
       await axios.post(
-        "http://localhost:5000/send-cancellation-email-experiences",
+        "https://custom-email-backend.onrender.com/send-cancellation-email-experiences",
         {
           guestEmail: user.email,
           guestName: user.displayName || "Guest",
@@ -200,7 +200,7 @@ const GuestReservations = () => {
       );
     } else if(res.listing.superCategory === "Services") {
       await axios.post(
-        "http://localhost:5000/send-cancellation-email-services",
+        "https://custom-email-backend.onrender.com/send-cancellation-email-services",
         {
           guestEmail: user.email,
           guestName: user.displayName || "Guest",

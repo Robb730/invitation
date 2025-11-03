@@ -127,7 +127,7 @@ const Navbar = () => {
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-beige text-charcoal rounded-lg shadow-lg py-2 text-sm font-medium">
+                <div className="absolute right-0 mt-2 w-48 bg-white text-charcoal rounded-lg shadow-lg py-2 text-sm font-medium">
                   <p className="block w-full text-left px-4 py-2 font-bold text-olive-dark">
                     {userData?.name}
                   </p>

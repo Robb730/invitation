@@ -38,8 +38,6 @@ const customMarker = L.icon({
   popupAnchor: [0, -30],
 });
 
-
-
 const ListingDetails = () => {
   const { id } = useParams();
   const [listing, setListing] = useState(null);
@@ -52,7 +50,6 @@ const ListingDetails = () => {
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [user, setUser] = useState("");
-
 
   const [favorite, setFavorite] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -67,38 +64,38 @@ const ListingDetails = () => {
 
   // 🔹 Fetch ratings for this listing
   // 🔹 Fetch ratings for this listing
-useEffect(() => {
-  const fetchRatings = async () => {
-    try {
-      const ratingsRef = collection(db, "ratings");
-      const q = query(ratingsRef, where("listingId", "==", id));
-      const snapshot = await getDocs(q);
-      const allRatings = snapshot.docs.map((doc) => doc.data());
+  // 🔹 Fetch ratings for this listing
+  useEffect(() => {
+    const fetchRatings = async () => {
+      try {
+        const ratingsRef = collection(db, "ratings");
+        const q = query(ratingsRef, where("listingId", "==", id));
+        const snapshot = await getDocs(q);
+        const allRatings = snapshot.docs.map((doc) => doc.data());
 
-      // Ratings with comments (for review section)
-      const ratingsWithComments = allRatings.filter(
-        (r) => r.comment && r.comment.trim() !== ""
-      );
+        // Separate ratings with comments
+        const ratingsWithComments = allRatings.filter(
+          (r) => r.comment && r.comment.trim() !== ""
+        );
 
-      // Calculate average rating
-      const avg =
-        allRatings.length > 0
-          ? allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length
-          : 0;
+        // Compute the average star rating
+        const avg =
+          allRatings.length > 0
+            ? allRatings.reduce((sum, r) => sum + (r.rating || 0), 0) /
+              allRatings.length
+            : 0;
 
-      setRatings({
-        all: allRatings,
-        withComments: ratingsWithComments,
-      });
-      setAverageRating(avg);
-    } catch (err) {
-      console.error("Error fetching ratings:", err);
-    }
-  };
-  fetchRatings();
-}, [id]);
-
-
+        setRatings({
+          all: allRatings,
+          withComments: ratingsWithComments,
+        });
+        setAverageRating(avg);
+      } catch (err) {
+        console.error("Error fetching ratings:", err);
+      }
+    };
+    fetchRatings();
+  }, [id]);
 
   useEffect(() => {
     if (!user || !listing) return;
@@ -116,15 +113,13 @@ useEffect(() => {
     return () => unsubscribe();
   }, [user, listing, id]);
 
-
-
-
-
-
-
   const [bookedDates, setBookedDates] = useState([]);
   const [dateRange, setDateRange] = useState([
-    { startDate: new Date(), endDate: new Date(Date.now() + 86400000), key: "selection" },
+    {
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 86400000),
+      key: "selection",
+    },
   ]);
 
   const handleSendMessage = async () => {
@@ -166,8 +161,6 @@ useEffect(() => {
     }
   };
 
-
-
   // Get current page URL for sharing
   const currentURL = window.location.href;
 
@@ -182,7 +175,11 @@ useEffect(() => {
     start.setDate(start.getDate() + 1);
 
     // Skip booked dates
-    while (bookedDates.some(d => start.toDateString() === new Date(d).toDateString())) {
+    while (
+      bookedDates.some(
+        (d) => start.toDateString() === new Date(d).toDateString()
+      )
+    ) {
       start.setDate(start.getDate() + 1);
     }
 
@@ -191,8 +188,6 @@ useEffect(() => {
     return { startDate: start, endDate: end };
   }, [bookedDates]);
 
-
-
   useEffect(() => {
     if (!bookedDates || bookedDates.length === 0) return;
 
@@ -200,16 +195,16 @@ useEffect(() => {
     setDateRange([{ startDate, endDate, key: "selection" }]);
   }, [bookedDates, getEarliestAvailableDate]);
 
-
   // 4️⃣ Check if a date is booked (used in dayContentRenderer)
   const isDateBooked = useCallback(
-    (date) => bookedDates.some(b => new Date(b).toDateString() === date.toDateString()),
+    (date) =>
+      bookedDates.some(
+        (b) => new Date(b).toDateString() === date.toDateString()
+      ),
     [bookedDates]
   );
 
   //check if listing is already your favorite
-
-
 
   useEffect(() => {
     const checkFavoriteStatus = async () => {
@@ -220,8 +215,6 @@ useEffect(() => {
     };
     checkFavoriteStatus();
   }, [user, id]);
-
-
 
   // 🔹 Fetch listing info
   useEffect(() => {
@@ -245,7 +238,6 @@ useEffect(() => {
     checkFav();
   }, [id]);
 
-
   // 🔹 Fetch host info
   useEffect(() => {
     const fetchHostInfo = async () => {
@@ -257,7 +249,6 @@ useEffect(() => {
           const data = hostSnap.data();
           setHostName(data.fullName || data.name || "Unknown Host");
           setHostPic(data.profilePic || "pic");
-
         }
       } catch (err) {
         console.error("Error fetching host:", err);
@@ -271,7 +262,11 @@ useEffect(() => {
     const fetchBookedDates = async () => {
       try {
         const bookingsRef = collection(db, "reservations");
-        const q = query(bookingsRef, where("listingId", "==", id), where("status", "==", "Confirmed"));
+        const q = query(
+          bookingsRef,
+          where("listingId", "==", id),
+          where("status", "==", "Confirmed")
+        );
         const snapshot = await getDocs(q);
         const booked = [];
         snapshot.forEach((doc) => {
@@ -398,9 +393,6 @@ useEffect(() => {
     }
   };
 
-
-
-
   return (
     <div className="bg-beige min-h-screen">
       <Navbar />
@@ -439,10 +431,14 @@ useEffect(() => {
 
       {/* Main Content */}
       <div className="px-10 lg:px-20 pt-28 pb-20 space-y-10">
-        <h1 className="text-3xl font-semibold text-olive-dark mb-1">
-          {listing.title}
-        </h1>
-        <p className="text-gray-600">{listing.location}</p>
+        <div className="space-y-1 animate-[fade-in_0.6s_ease-out]">
+          <h1 className="text-4xl sm:text-5xl font-semibold text-olive-darker leading-tight tracking-tight">
+            {listing.title}
+          </h1>
+          <p className="text-lg text-grayish italic flex items-center gap-1">
+            <span className="text-olive-dark text-xl"></span> {listing.location}
+          </p>
+        </div>
 
         {/* Image grid */}
         {/* 1 IMAGE */}
@@ -553,7 +549,8 @@ useEffect(() => {
                 <span className="text-yellow-500 flex items-center gap-1 text-lg font-medium">
                   ★ {averageRating.toFixed(1)}
                   <span className="text-gray-500 text-sm">
-                    ({ratings.all?.length || 0} {ratings.all?.length === 1 ? "review" : "reviews"})
+                    ({ratings.all?.length || 0}{" "}
+                    {ratings.all?.length === 1 ? "review" : "reviews"})
                   </span>
                 </span>
               )}
@@ -581,7 +578,10 @@ useEffect(() => {
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution="&copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors"
                     />
-                    <Marker position={[listing.latitude, listing.longitude]} icon={customMarker}>
+                    <Marker
+                      position={[listing.latitude, listing.longitude]}
+                      icon={customMarker}
+                    >
                       <Popup>
                         <div className="text-center">
                           <h4 className="font-semibold text-olive-dark mb-2">
@@ -606,55 +606,61 @@ useEffect(() => {
               </div>
             )}
             {/* ⭐ Ratings & Reviews Section */}
-            {ratings.length > 0 && (
+            {ratings.all?.length > 0 && (
               <div className="mt-10">
                 <h3 className="text-2xl font-semibold text-olive-dark mb-4 flex items-center gap-2">
                   <span>Ratings & Reviews</span>
                   <span className="text-yellow-500 flex items-center gap-1 text-lg font-medium">
                     ★ {averageRating.toFixed(1)}
                     <span className="text-gray-500 text-sm">
-                      ({ratings.length} {ratings.length === 1 ? "review" : "reviews"})
+                      ({ratings.all.length}{" "}
+                      {ratings.all.length === 1 ? "review" : "reviews"})
                     </span>
                   </span>
                 </h3>
 
-                <div className="space-y-4">
-                  {ratings.withComments?.map((r, i) => (
-
-                    <div
-                      key={i}
-                      className="border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition bg-white"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-800">
-                            {r.guestName || "Guest"}
-                          </span>
-                          <span className="flex text-yellow-400">
-                            {"★".repeat(r.rating)}{" "}
-                            <span className="text-gray-300">
-                              {"★".repeat(5 - r.rating)}
+                {/* Only show comment section if there are comments */}
+                {ratings.withComments.length > 0 ? (
+                  <div className="space-y-4">
+                    {ratings.withComments.map((r, i) => (
+                      <div
+                        key={i}
+                        className="border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition bg-white"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-800">
+                              {r.guestName || "Guest"}
                             </span>
+                            <span className="flex text-yellow-400">
+                              {"★".repeat(r.rating)}{" "}
+                              <span className="text-gray-300">
+                                {"★".repeat(5 - r.rating)}
+                              </span>
+                            </span>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {r.createdAt?.toDate
+                              ? r.createdAt.toDate().toLocaleDateString()
+                              : new Date(r.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <span className="text-sm text-gray-500">
-                          {r.createdAt?.toDate
-                            ? r.createdAt.toDate().toLocaleDateString()
-                            : new Date(r.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
 
-                      <p className="text-gray-700 mt-2 italic leading-relaxed">
-                        “{r.comment}”
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                        <p className="text-gray-700 mt-2 italic leading-relaxed">
+                          “{r.comment}”
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic">
+                    There are no written reviews yet, but this listing has{" "}
+                    {ratings.all.length} rating
+                    {ratings.all.length > 1 ? "s" : ""}.
+                  </p>
+                )}
               </div>
             )}
-
-
-
           </div>
 
           {/* Reservation box */}
@@ -682,20 +688,29 @@ useEffect(() => {
               </button>
             )}
 
-
             {/* 💳 Reservation Box */}
             <div className="bg-white border rounded-2xl p-6 shadow-md space-y-5">
               {/* Price and Buttons Row */}
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold">
                   ₱{listing.price}
-                  <span className="text-gray-600 text-sm font-normal"> / night</span>
+                  <span className="text-gray-600 text-sm font-normal">
+                    {" "}
+                    / night
+                  </span>
                 </h2>
 
                 <div className="flex items-center gap-3">
                   {/* Favorite Button */}
-                  <button onClick={handleFavoriteToggle} className="p-2 rounded-full border transition">
-                    {favorite ? <AiFillHeart className="text-olive text-xl" /> : <AiOutlineHeart className="text-gray-500 text-xl" />}
+                  <button
+                    onClick={handleFavoriteToggle}
+                    className="p-2 rounded-full border transition"
+                  >
+                    {favorite ? (
+                      <AiFillHeart className="text-olive text-xl" />
+                    ) : (
+                      <AiOutlineHeart className="text-gray-500 text-xl" />
+                    )}
                   </button>
 
                   {/* Share Button */}
@@ -778,7 +793,9 @@ useEffect(() => {
                   {/* Social links */}
                   <div className="flex justify-center gap-4">
                     <a
-                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentURL)}&quote=${encodeURIComponent(listing.title)}`}
+                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                        currentURL
+                      )}&quote=${encodeURIComponent(listing.title)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
@@ -786,7 +803,9 @@ useEffect(() => {
                       Facebook
                     </a>
                     <a
-                      href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(currentURL)}&text=${encodeURIComponent(listing.title)}`}
+                      href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(
+                        currentURL
+                      )}&text=${encodeURIComponent(listing.title)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-blue-400 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
@@ -823,14 +842,18 @@ useEffect(() => {
                     messages.map((msg) => (
                       <div
                         key={msg.id}
-                        className={`mb-2 flex ${msg.senderId === user.id ? "justify-end" : "justify-start"
-                          }`}
+                        className={`mb-2 flex ${
+                          msg.senderId === user.id
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
                       >
                         <div
-                          className={`px-3 py-2 rounded-lg max-w-[70%] ${msg.senderId === user.id
-                            ? "bg-olive-dark text-white"
-                            : "bg-gray-200 text-gray-800"
-                            }`}
+                          className={`px-3 py-2 rounded-lg max-w-[70%] ${
+                            msg.senderId === user.id
+                              ? "bg-olive-dark text-white"
+                              : "bg-gray-200 text-gray-800"
+                          }`}
                         >
                           <p>{msg.text}</p>
                         </div>
@@ -838,7 +861,6 @@ useEffect(() => {
                     ))
                   )}
                 </div>
-
 
                 {/* Input box */}
                 <div className="flex gap-2">
@@ -855,13 +877,10 @@ useEffect(() => {
                   >
                     Send
                   </button>
-
                 </div>
               </div>
             </div>
           )}
-
-
         </div>
 
         {/* Calendar modal */}
@@ -899,12 +918,16 @@ useEffect(() => {
                   });
 
                   if (startBooked) {
-                    alert("This date is already booked. Please choose another check-in date.");
+                    alert(
+                      "This date is already booked. Please choose another check-in date."
+                    );
                     return;
                   }
 
                   if (invalidRange) {
-                    alert("Selected range includes unavailable (booked) days. Please choose different dates.");
+                    alert(
+                      "Selected range includes unavailable (booked) days. Please choose different dates."
+                    );
                     return;
                   }
 
@@ -929,7 +952,6 @@ useEffect(() => {
                   );
                 }}
               />
-
 
               <div className="text-center mt-4">
                 <button
@@ -958,14 +980,30 @@ useEffect(() => {
               </h3>
 
               <div className="space-y-3 text-gray-700">
-                <p><strong>Guest Name:</strong> {user.name}</p>
-                <p><strong>Guest Email:</strong> {user.email}</p>
-                <p><strong>Guests:</strong> {guestCount}</p>
-                <p><strong>Check-in:</strong> {format(startDate, "MMM dd, yyyy")}</p>
-                <p><strong>Check-out:</strong> {format(endDate, "MMM dd, yyyy")}</p>
-                <p><strong>Nights:</strong> {nights}</p>
-                <p><strong>Price per Night:</strong> ₱{listing.price}</p>
-                <p><strong>Subtotal:</strong> ₱{subtotal.toLocaleString()}</p>
+                <p>
+                  <strong>Guest Name:</strong> {user.name}
+                </p>
+                <p>
+                  <strong>Guest Email:</strong> {user.email}
+                </p>
+                <p>
+                  <strong>Guests:</strong> {guestCount}
+                </p>
+                <p>
+                  <strong>Check-in:</strong> {format(startDate, "MMM dd, yyyy")}
+                </p>
+                <p>
+                  <strong>Check-out:</strong> {format(endDate, "MMM dd, yyyy")}
+                </p>
+                <p>
+                  <strong>Nights:</strong> {nights}
+                </p>
+                <p>
+                  <strong>Price per Night:</strong> ₱{listing.price}
+                </p>
+                <p>
+                  <strong>Subtotal:</strong> ₱{subtotal.toLocaleString()}
+                </p>
 
                 <div className="flex items-center gap-2 mt-4">
                   <Tag size={18} />
