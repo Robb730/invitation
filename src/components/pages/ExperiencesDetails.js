@@ -315,10 +315,11 @@ const ExperiencesDetails = () => {
       alert("Please select valid dates.");
       return;
     }
-    if (listing.maxGuests && guestCount > remainingCapacity) {
-  alert(`Only ${remainingCapacity} spots left for that date!`);
+    if (listing.maxGuests && remainingCapacity === 0) {
+  alert("This date is fully booked. Please choose another.");
   return;
 }
+
 
 
     setShowSummary(true);
@@ -330,8 +331,8 @@ const ExperiencesDetails = () => {
       listing.promoCode &&
       listing.promoCode.toLowerCase() === promoCode.toLowerCase()
     ) {
-      setDiscount(listing.discountPercent || 10); // e.g., 10% off if not specified
-      alert(`Promo code applied! ${listing.discountPercent || 10}% discount`);
+      setDiscount(listing.discount || 10); // e.g., 10% off if not specified
+      alert(`Promo code applied! ${listing.discount || 10}% discount`);
     } else {
       setDiscount(0);
       alert("Invalid promo code for this listing.");
@@ -636,13 +637,11 @@ const ExperiencesDetails = () => {
                   className="border rounded-lg px-3 py-1.5 w-24 text-center focus:ring-2 focus:ring-olive-dark outline-none"
                 />
               </div>
-              {listing.maxGuests && (
-                <p className="text-sm text-gray-600 mt-1 text-center">
-                  {remainingCapacity !== null
-                    ? `Available slots: ${remainingCapacity} out of ${listing.maxGuests}`
-                    : `Maximum capacity: ${listing.maxGuests} guests`}
-                </p>
-              )}
+              {listing.maxGuests && remainingCapacity !== null && (
+  <p className="text-sm text-gray-600 mt-1 text-center">
+    Available slots: {remainingCapacity}
+  </p>
+)}
 
 
               {/* Calendar Button */}
@@ -813,51 +812,47 @@ const ExperiencesDetails = () => {
               <DateRange
                 ranges={dateRange}
                 onChange={async (item) => {
-                  const selectedDate = item.selection.startDate;
+  const selectedDate = item.selection.startDate;
 
-                  // Check if selected date is booked
-                  const isBooked = bookedDates.some((b) => {
-                    const booked = new Date(b);
-                    return (
-                      booked.getFullYear() === selectedDate.getFullYear() &&
-                      booked.getMonth() === selectedDate.getMonth() &&
-                      booked.getDate() === selectedDate.getDate()
-                    );
-                  });
+  // Force single date only
+  setDateRange([
+    {
+      startDate: selectedDate,
+      endDate: selectedDate,
+      key: "selection",
+    },
+  ]);
 
-                  if (isBooked) {
-                    alert("This date is already booked. Please choose another.");
-                    return;
-                  }
+  // 🔹 Fetch total guests booked on that date
+  const bookingsRef = collection(db, "reservations");
+  const q = query(
+    bookingsRef,
+    where("listingId", "==", id),
+    where("checkIn", "==", format(selectedDate, "yyyy-MM-dd")),
+    where("status", "==", "Confirmed")
+  );
 
-                  // Force single date only
-                  setDateRange([
-                    {
-                      startDate: selectedDate,
-                      endDate: selectedDate,
-                      key: "selection",
-                    },
-                  ]);
-                  const bookingsRef = collection(db, "reservations");
-                  const q = query(
-                    bookingsRef,
-                    where("listingId", "==", id),
-                    where("bookedDate", "==", format(selectedDate, "yyyy-MM-dd"))
-                  );
-                  const snapshot = await getDocs(q);
-                  let totalGuestsBooked = 0;
-                  snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    totalGuestsBooked += data.guests || 0;
-                  });
+  const snapshot = await getDocs(q);
+  let totalGuestsBooked = 0;
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    totalGuestsBooked += data.guests || 0;
+  });
 
-                  // Calculate remaining slots
-                  const remaining = listing.maxGuests
-                    ? listing.maxGuests - totalGuestsBooked
-                    : null;
+  // 🔹 Calculate remaining slots
+  const remaining = listing.maxGuests
+    ? Math.max(listing.maxGuests - totalGuestsBooked, 0)
+    : null;
 
-                  setRemainingCapacity(remaining);
-                }}
+  setRemainingCapacity(remaining);
+
+  // 🔹 Prevent selecting if fully booked
+  if (remaining === 0) {
+    alert("This date is fully booked. Please choose another date.");
+    return;
+  }
+}}
+
                 moveRangeOnFirstSelection={false}
                 minDate={new Date()}
                 rangeColors={["#16a34a"]}
@@ -993,7 +988,7 @@ const ExperiencesDetails = () => {
 
                       console.log("email sent to: " + user.email);
                       await axios.post(
-                        "https://custom-email-backend.onrender.com/send-reservation-receipt-experiences",
+                        "http://localhost:5000/send-reservation-receipt-experiences",
                         {
                           guestEmail: user.email,
                           guestName: user.name,

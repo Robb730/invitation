@@ -32,7 +32,7 @@ const GuestReservations = () => {
   const statusColor = {
     Confirmed: "bg-green-100 text-green-700",
     Pending: "bg-yellow-100 text-yellow-700",
-    Canceled: "bg-red-100 text-red-700",
+    Cancelled: "bg-red-100 text-red-700",
     Completed: "bg-blue-100 text-blue-700",
   };
 
@@ -80,25 +80,43 @@ const GuestReservations = () => {
         const listingSnap = await getDoc(listingRef);
 
         if (listingSnap.exists()) {
-          const fullRes = {
-            id: resDoc.id,
-            ...resData,
-            listing: { id: listingSnap.id, ...listingSnap.data() },
-            rated: false, // default false
-          };
+  const listingData = listingSnap.data();
+  let hostName = "Unknown Host";
 
-          // Auto-complete past reservations
-          if (fullRes.checkOut) {
-            const checkOutDate = new Date(fullRes.checkOut);
-            if (checkOutDate < today && fullRes.status !== "Completed") {
-              const resRef = doc(db, "reservations", resDoc.id);
-              await updateDoc(resRef, { status: "Completed" });
-              fullRes.status = "Completed";
-            }
-          }
+  // 🔹 Fetch host name from users collection
+  if (listingData.hostId) {
+    const hostRef = doc(db, "users", listingData.hostId);
+    const hostSnap = await getDoc(hostRef);
+    if (hostSnap.exists()) {
+      const hostData = hostSnap.data();
+      hostName = hostData.fullName || hostData.name || "Unknown Host";
+    }
+  }
 
-          fetched.push(fullRes);
-        }
+  const fullRes = {
+    id: resDoc.id,
+    ...resData,
+    listing: {
+      id: listingSnap.id,
+      ...listingData,
+      hostName, // ✅ now included
+    },
+    rated: false,
+  };
+
+  // Auto-complete past reservations
+  if (fullRes.checkOut) {
+    const checkOutDate = new Date(fullRes.checkOut);
+    if (checkOutDate < today && fullRes.status !== "Completed") {
+      const resRef = doc(db, "reservations", resDoc.id);
+      await updateDoc(resRef, { status: "Completed" });
+      fullRes.status = "Completed";
+    }
+  }
+
+  fetched.push(fullRes);
+}
+
       }
 
       // Fetch all ratings by this user
@@ -144,12 +162,14 @@ const GuestReservations = () => {
       return;
 
     try {
+    
       const reservationRef = doc(db, "reservations", res.id);
       await updateDoc(reservationRef, { status: "Cancelled" });
       setReservations((prev) =>
-        prev.map((r) => (r.id === res.id ? { ...r, status: "Canceled" } : r))
+        prev.map((r) => (r.id === res.id ? { ...r, status: "Cancelled" } : r))
       );
 
+      if(res.listing.superCategory === "Homes") {
       await axios.post(
         "https://custom-email-backend.onrender.com/send-cancellation-email",
         {
@@ -164,8 +184,37 @@ const GuestReservations = () => {
         },
         { headers: { "Content-Type": "application/json" } }
       );
+    } else if(res.listing.superCategory === "Experiences") {
+      await axios.post(
+        "http://localhost:5000/send-cancellation-email-experiences",
+        {
+          guestEmail: user.email,
+          guestName: user.displayName || "Guest",
+          listingTitle: res.listing?.title,
+          hostName: res.listing?.hostName || "Host",
+          bookedDate: res.checkIn,
+          totalAmount: res.totalAmount,
+          reservationId: res.id,
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
+    } else if(res.listing.superCategory === "Services") {
+      await axios.post(
+        "http://localhost:5000/send-cancellation-email-services",
+        {
+          guestEmail: user.email,
+          guestName: user.displayName || "Guest",
+          listingTitle: res.listing?.title,
+          hostName: res.listing?.hostName || "Host",
+          bookedDate: res.checkIn || res.bookedDate,
+          totalAmount: res.totalAmount,
+          reservationId: res.id,
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-      alert("Reservation canceled successfully.");
+      alert("Reservation cancelled successfully.");
     } catch (error) {
       console.error("Error canceling reservation:", error);
       alert("Failed to cancel reservation.");
@@ -217,33 +266,33 @@ const GuestReservations = () => {
   };
 
   const handleViewListing = async (listingId) => {
-    try{
-      const listingRef = doc(db, "listings", listingId);
-      const listingSnap = await getDoc(listingRef);
-      const listingData = listingSnap.data();
+  try {
+    const listingRef = doc(db, "listings", listingId);
+    const listingSnap = await getDoc(listingRef);
 
-      if (!listingSnap.exists()) {
-        if(listingData.supercategory === "homes")
-        {
-          navigate(`/homes/${listingId}`);
-        } else if(listingData.supercategory === "experiences")
-        {
-          navigate(`/experiences/${listingId}`);
-        } else if(listingData.supercategory === "services") {
-          navigate(`/services/${listingId}`);
-        } else {
-          alert("Listing category is unknown.");
-        }
-
-
-    
+    if (!listingSnap.exists()) {
+      alert("Listing not found.");
+      return;
     }
-  } 
-    catch (error) {
-      console.error("Error viewing listing:", error);
-      alert("Failed to view listing.");
+
+    const listingData = listingSnap.data();
+
+    // navigate based on correct superCategory value
+    if (listingData.superCategory === "Homes") {
+      navigate(`/homes/${listingId}`);
+    } else if (listingData.superCategory === "Experiences") {
+      navigate(`/experiences/${listingId}`);
+    } else if (listingData.superCategory === "Services") {
+      navigate(`/services/${listingId}`);
+    } else {
+      alert("Listing category is unknown.");
     }
-  };
+  } catch (error) {
+    console.error("Error viewing listing:", error);
+    alert("Failed to view listing.");
+  }
+};
+
 
   return (
     <>
@@ -297,12 +346,20 @@ const GuestReservations = () => {
                     {res.listing?.location || "Unknown location"}
                   </p>
                   <p className="flex items-center text-gray-600 gap-x-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span>
-                      <span className="font-bold">Check-in:</span> {res.checkIn}{" "}
-                      <span className="font-bold">Check-out:</span> {res.checkOut}
-                    </span>
-                  </p>
+  <Calendar className="h-4 w-4 text-gray-500" />
+  {res.listing.superCategory === "Homes" ? (
+    <span>
+      <span className="font-bold">Check-in:</span> {res.checkIn}{" "}
+      <span className="font-bold">Check-out:</span> {res.checkOut}
+    </span>
+  ) : (
+    <span>
+      <span className="font-bold">Date:</span>{" "}
+      {res.checkIn || res.bookedDate || "N/A"}
+    </span>
+  )}
+</p>
+
 
                   <span
                     className={`text-sm font-semibold px-3 py-1 rounded-full mt-2 self-start ${statusColor[res.status]}`}
@@ -330,7 +387,7 @@ const GuestReservations = () => {
                       >
                         {res.rated ? "Rated" : "Rate"}
                       </button>
-                    ) : res.status !== "Canceled" && res.status !== "Completed" ? (
+                    ) : res.status !== "Cancelled" && res.status !== "Completed" ? (
                       <button
                         onClick={() => handleCancel(res)}
                         className="text-red-600 font-semibold hover:underline"

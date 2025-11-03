@@ -80,6 +80,7 @@ const Reservations = () => {
         const updatedReservations = await Promise.all(
           reservations.map(async (reservation) => {
             let listingTitle = "Untitled Listing";
+            let listingCategory = "Unknown Category";
             let guestName = "Unknown Guest";
             let guestPic = null;
 
@@ -88,6 +89,7 @@ const Reservations = () => {
               const listingSnap = await getDoc(listingRef);
               if (listingSnap.exists()) {
                 listingTitle = listingSnap.data().title || "Untitled Listing";
+                listingCategory = listingSnap.data().superCategory || "Unknown Category";
               }
             }
 
@@ -101,7 +103,7 @@ const Reservations = () => {
               }
             }
 
-            return { ...reservation, listingTitle, guestName, guestPic };
+            return { ...reservation, listingTitle, listingCategory, guestName, guestPic };
           })
         );
 
@@ -229,9 +231,18 @@ const Reservations = () => {
               <p className="flex items-center gap-2">
                 <User size={16} /> {reservation.guestName}
               </p>
-              <p className="flex items-center gap-2">
-                <Calendar size={16} /> {reservation.checkIn} → {reservation.checkOut}
-              </p>
+              {reservation.listingCategory === "Homes" && (
+                <p className="flex items-center text-gray-600 gap-x-2">
+                  <Calendar size={16} className="text-gray-500" />
+                  {reservation.checkIn} → {reservation.checkOut}
+                </p>
+              )}{reservation.listingCategory !== "Homes" && (
+                <p className="flex items-center text-gray-600 gap-x-2">
+                  <Calendar size={16} className="text-gray-500" />
+                  {reservation.checkIn}
+                </p>
+              )}
+
               <p className="flex items-center gap-2">
                 <Clock size={16} />{" "}
                 {reservation.createdAt?.toDate
@@ -314,10 +325,21 @@ const Reservations = () => {
                 <span className="font-medium text-olive-dark">Guests:</span>{" "}
                 {selectedReservation.guests || 1}
               </p>
-              <p>
-                <span className="font-medium text-olive-dark">Check-in / Check-out:</span>{" "}
-                {selectedReservation.checkIn} → {selectedReservation.checkOut}
-              </p>
+
+
+              {selectedReservation.listingCategory === "Homes" ? (
+                <p>
+                  <span className="font-medium text-olive-dark">Check-in / Check-out:</span>{" "}
+                  {selectedReservation.checkIn} → {selectedReservation.checkOut}
+                </p>
+              ) : (
+                <p>
+                  <span className="font-medium text-olive-dark">Schedule:</span>{" "}
+                  {selectedReservation.checkIn}
+                </p>
+              )}
+
+
               <p>
                 <span className="font-medium text-olive-dark">Total Amount:</span>{" "}
                 ₱{selectedReservation.totalAmount?.toLocaleString() || 0}

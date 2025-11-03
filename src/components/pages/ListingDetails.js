@@ -66,31 +66,38 @@ const ListingDetails = () => {
   const [averageRating, setAverageRating] = useState(0);
 
   // 🔹 Fetch ratings for this listing
-  useEffect(() => {
-    const fetchRatings = async () => {
-      try {
-        const ratingsRef = collection(db, "ratings");
-        const q = query(ratingsRef, where("listingId", "==", id));
-        const snapshot = await getDocs(q);
-        const allRatings = snapshot.docs.map((doc) => doc.data());
+  // 🔹 Fetch ratings for this listing
+useEffect(() => {
+  const fetchRatings = async () => {
+    try {
+      const ratingsRef = collection(db, "ratings");
+      const q = query(ratingsRef, where("listingId", "==", id));
+      const snapshot = await getDocs(q);
+      const allRatings = snapshot.docs.map((doc) => doc.data());
 
-        // Filter only those with comments
-        const ratedWithComments = allRatings.filter(r => r.comment && r.comment.trim() !== "");
+      // Ratings with comments (for review section)
+      const ratingsWithComments = allRatings.filter(
+        (r) => r.comment && r.comment.trim() !== ""
+      );
 
-        // Calculate average
-        const avg =
-          allRatings.length > 0
-            ? allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length
-            : 0;
+      // Calculate average rating
+      const avg =
+        allRatings.length > 0
+          ? allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length
+          : 0;
 
-        setRatings(ratedWithComments);
-        setAverageRating(avg);
-      } catch (err) {
-        console.error("Error fetching ratings:", err);
-      }
-    };
-    fetchRatings();
-  }, [id]);
+      setRatings({
+        all: allRatings,
+        withComments: ratingsWithComments,
+      });
+      setAverageRating(avg);
+    } catch (err) {
+      console.error("Error fetching ratings:", err);
+    }
+  };
+  fetchRatings();
+}, [id]);
+
 
 
   useEffect(() => {
@@ -546,7 +553,7 @@ const ListingDetails = () => {
                 <span className="text-yellow-500 flex items-center gap-1 text-lg font-medium">
                   ★ {averageRating.toFixed(1)}
                   <span className="text-gray-500 text-sm">
-                    ({ratings.length} {ratings.length === 1 ? "review" : "reviews"})
+                    ({ratings.all?.length || 0} {ratings.all?.length === 1 ? "review" : "reviews"})
                   </span>
                 </span>
               )}
@@ -612,7 +619,8 @@ const ListingDetails = () => {
                 </h3>
 
                 <div className="space-y-4">
-                  {ratings.map((r, i) => (
+                  {ratings.withComments?.map((r, i) => (
+
                     <div
                       key={i}
                       className="border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition bg-white"

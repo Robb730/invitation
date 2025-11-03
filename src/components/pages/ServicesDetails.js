@@ -228,28 +228,57 @@ const ServicesDetails = () => {
 
     // 🔹 Fetch booked dates
     useEffect(() => {
-        const fetchBookedDates = async () => {
-            try {
-                const bookingsRef = collection(db, "reservations");
-                const q = query(bookingsRef, where("listingId", "==", id), where("status", "==", "Confirmed"));
-                const snapshot = await getDocs(q);
-                const booked = [];
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    let start = new Date(data.checkIn);
-                    let end = new Date(data.checkOut);
-                    while (start <= end) {
-                        booked.push(new Date(start));
-                        start.setDate(start.getDate() + 1);
-                    }
-                });
-                setBookedDates(booked);
-            } catch (err) {
-                console.error("Error fetching booked dates:", err);
-            }
-        };
-        fetchBookedDates();
-    }, [id]);
+  const fetchBookedDates = async () => {
+    try {
+      let allBooked = [];
+
+      // ✅ 1. Get confirmed reservations
+      const reservationsRef = collection(db, "reservations");
+      const q = query(
+        reservationsRef,
+        where("listingId", "==", id),
+        where("status", "==", "Confirmed")
+      );
+      const resSnap = await getDocs(q);
+
+      resSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.bookedDate) {
+          // for single-day services
+          allBooked.push(data.bookedDate);
+        } else if (data.checkIn && data.checkOut) {
+          // for multi-day stays
+          let start = new Date(data.checkIn);
+          let end = new Date(data.checkOut);
+          while (start <= end) {
+            allBooked.push(format(start, "yyyy-MM-dd"));
+            start.setDate(start.getDate() + 1);
+          }
+        }
+      });
+
+      // ✅ 2. Get booked dates stored in the listing document
+      const listingRef = doc(db, "listings", id);
+      const listingSnap = await getDoc(listingRef);
+      if (listingSnap.exists()) {
+        const listingData = listingSnap.data();
+        if (Array.isArray(listingData.bookedDates)) {
+          allBooked = [...allBooked, ...listingData.bookedDates];
+        }
+      }
+
+      // ✅ 3. Remove duplicates
+      const uniqueDates = [...new Set(allBooked.map((d) => new Date(d).toDateString()))];
+
+      setBookedDates(uniqueDates.map((d) => new Date(d)));
+    } catch (err) {
+      console.error("Error fetching booked dates:", err);
+    }
+  };
+
+  fetchBookedDates();
+}, [id]);
+
 
     // 🔹 Get logged in user info
     useEffect(() => {
@@ -619,31 +648,21 @@ const ServicesDetails = () => {
                             </div>
 
                             {/* Guests Input */}
-                            <div className="flex items-center justify-between border-t pt-3">
-                                <label className="text-gray-700 font-medium">Guests:</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max={listing.guests}
-                                    value={guestCount}
-                                    onChange={(e) => setGuestCount(Number(e.target.value))}
-                                    className="border rounded-lg px-3 py-1.5 w-24 text-center focus:ring-2 focus:ring-olive-dark outline-none"
-                                />
-                            </div>
+                            
 
                             {/* Calendar Button */}
-                            <div className="border-t pt-3 text-center">
-                                <button
-                                    onClick={() => setShowCalendar(true)}
-                                    className="flex items-center justify-center gap-2 mx-auto bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
-                                >
-                                    <Calendar size={18} />
-                                    <span>
-                                        {format(dateRange[0].startDate, "MMM dd")} -{" "}
-                                        {format(dateRange[0].endDate, "MMM dd, yyyy")}
-                                    </span>
-                                </button>
-                            </div>
+                                          <div className="border-t pt-3 text-center">
+                                            <button
+                                              onClick={() => setShowCalendar(true)}
+                                              className="flex items-center justify-center gap-2 mx-auto bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
+                                            >
+                                              <Calendar size={18} />
+                                              <span>
+                                                {format(dateRange[0].startDate, "MMM dd, yyyy")}
+                                              </span>
+                                            </button>
+                            
+                                          </div>
                         </div>
                     </div>
                     {showShareModal && (
@@ -779,29 +798,35 @@ const ServicesDetails = () => {
                                 Select Dates
                             </h3>
                             <DateRange
-                                ranges={dateRange}
-                                onChange={(item) => {
-                                    const selectedDate = item.selection.startDate;
+  ranges={dateRange}
+  onChange={(item) => {
+    const selectedDate = item.selection.startDate;
 
-                                    // Prevent selecting already booked date
-                                    const isBooked = bookedDates.some((b) =>
-                                        new Date(b).toDateString() === selectedDate.toDateString()
-                                    );
+    // Check if selected date is booked
+    const isBooked = bookedDates.some(
+      (b) => new Date(b).toDateString() === selectedDate.toDateString()
+    );
 
-                                    if (isBooked) {
-                                        alert("This date is already booked. Please choose another date.");
-                                        return;
-                                    }
+    if (isBooked) {
+      alert("❌ This date is already booked. Please select another date.");
+      return;
+    }
 
-                                    // Force single-day range
-                                    setDateRange([
-                                        { startDate: selectedDate, endDate: selectedDate, key: "selection" },
-                                    ]);
-                                }}
-                                showDateDisplay={false}
-                                minDate={new Date()}
-                                rangeColors={["#556B2F"]}
-                            />
+    // Force single-day booking
+    setDateRange([
+      {
+        startDate: selectedDate,
+        endDate: selectedDate,
+        key: "selection",
+      },
+    ]);
+  }}
+  showDateDisplay={false}
+  minDate={new Date()}
+  rangeColors={["#556B2F"]}
+  disabledDates={bookedDates.map((d) => new Date(d))}
+/>
+
 
 
 
@@ -834,7 +859,6 @@ const ServicesDetails = () => {
                             <div className="space-y-3 text-gray-700">
                                 <p><strong>Guest Name:</strong> {user.name}</p>
                                 <p><strong>Guest Email:</strong> {user.email}</p>
-                                <p><strong>Guests:</strong> {guestCount}</p>
                                 <p><strong>Booked Date:</strong> {format(startDate, "MMM dd, yyyy")}</p>
                                 <p><strong>Price {listing.priceType}:</strong> ₱{listing.price}</p>
 
@@ -918,18 +942,17 @@ const ServicesDetails = () => {
 
                                             console.log("email sent to: " + user.email);
                                             await axios.post(
-                                                "https://custom-email-backend.onrender.com/send-reservation-receipt",
+                                                "http://localhost:5000/send-reservation-receipt-services",
                                                 {
                                                     guestEmail: user.email,
                                                     guestName: user.name,
                                                     listingTitle: listing.title,
                                                     hostName: hostName,
-                                                    checkIn: format(startDate, "MMM dd, yyyy"),
-                                                    checkOut: format(endDate, "MMM dd, yyyy"),
+                                                    bookedDate: format(startDate, "MMM dd, yyyy"),
                                                     totalAmount: total,
-                                                    guests: guestCount,
+                                    
                                                     reservationId: order.id,
-                                                    nights: nights,
+                                                    
                                                 },
                                                 {
                                                     headers: {
