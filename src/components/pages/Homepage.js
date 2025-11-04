@@ -13,6 +13,12 @@ const Homepage = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
+  const [searchParams, setSearchParams] = useState({
+    location: "",
+    date: "",
+    guests: "",
+  });
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -61,11 +67,12 @@ useEffect(() => {
   }
 }, [location]);
 
+
   return (
     <div className="bg-beige min-h-screen">
       <Navbar user={user} />
-      <Search user={user} />
-      <Pagination onListingClick={handleListingClick} user={user} />
+      <Search user={user} onSearch={(params) => setSearchParams(params)} />
+      <Pagination onListingClick={handleListingClick} user={user} searchParams={searchParams}/>
       <Footer />
 
       {/* Floating Message Icon */}

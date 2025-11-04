@@ -15,7 +15,7 @@ import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
 import { isFavorite, toggleFavorite } from "../../../utils/favorites";
 import { Home, Sun, Wrench } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLocation } from "react-router-dom";
+
 
 
 /* --- SlideshowCard --- */
@@ -222,22 +222,149 @@ const CategorySection = ({ title, listings, onListingClick }) => {
 };
 
 /* --- Main Pagination Component --- */
-const Pagination = () => {
+
+const Pagination = ({ searchParams }) => {
   const [listings, setListings] = useState([]);
+  const [suggested, setSuggested] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
   const navigate = useNavigate();
-  const location = useLocation();
 
+  const { location: searchLoc, date: searchDate, guests: searchGuests } =
+    searchParams || {};
+
+  // 🔹 Helper to get region (third from last)
+  const getRegion = (locationStr) => {
+    if (!locationStr) return null;
+    const parts = locationStr.split(",").map((p) => p.trim());
+    return parts.length >= 3
+      ? parts[parts.length - 3]
+      : parts[parts.length - 1];
+  };
+
+  // 🔹 Fetch all listings
   useEffect(() => {
-    if (location.state?.scrollTo) {
-      const section = document.getElementById(location.state.scrollTo);
-      if (section) {
-        setTimeout(() => {
-          section.scrollIntoView({ behavior: "smooth" });
-        }, 1500); // delay to wait for page render
-      }
-    }
-  }, [location]);
+    const fetchListings = async () => {
+      try {
+        const listingsRef = collection(db, "listings");
+        const q = query(listingsRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
 
+        const data = await Promise.all(
+          snapshot.docs.map(async (d) => {
+            const l = { id: d.id, ...d.data() };
+            if (l.hostId) {
+              const h = await getDoc(doc(db, "users", l.hostId));
+              l.hostName = h.exists()
+                ? h.data().fullName || h.data().name || "Unknown Host"
+                : "Unknown Host";
+            }
+            return l;
+          })
+        );
+
+        setListings(data.filter((l) => l.status === "Active"));
+      } catch (err) {
+        console.error("Error fetching listings:", err);
+      }
+    };
+    fetchListings();
+  }, []);
+
+  // 🔹 Live search filter (runs when searchParams or listings change)
+  useEffect(() => {
+    if (!searchLoc) {
+      setSearchResults([]);
+      return;
+    }
+
+    const q = searchLoc.trim().toLowerCase();
+
+    const filtered = listings.filter((l) => {
+  const region = getRegion(l.location);
+  const matchLoc =
+    (region && region.toLowerCase().includes(q)) ||
+    (l.location && l.location.toLowerCase().includes(q)) ||
+    (l.category && l.category.toLowerCase().includes(q));
+
+  const requestedGuests = Number(searchGuests);
+
+// Support both maxGuests and guests fields
+const listingGuests = Number(l.maxGuests ?? l.guests);
+
+// ✅ Strict filtering logic
+const fitsGuests =
+  !requestedGuests || (listingGuests && listingGuests >= requestedGuests);
+
+  return matchLoc && fitsGuests;
+});
+
+
+    setSearchResults(filtered);
+  }, [searchParams, listings, searchLoc, searchGuests]);
+
+  // 🔹 Fetch personalized suggestions (from reservations)
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      const user = getAuth().currentUser;
+      if (!user) return;
+
+      try {
+        const reservationsRef = collection(db, "reservations");
+        const snapshot = await getDocs(reservationsRef);
+        const userReservations = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((r) => r.guestId === user.uid);
+
+        if (userReservations.length === 0) return;
+
+        const reservedListingIds = userReservations.map((r) => r.listingId);
+        const reservedListings = listings.filter((l) =>
+          reservedListingIds.includes(l.id)
+        );
+
+        if (reservedListings.length === 0) return;
+
+        const categoryCount = {};
+        const regionCount = {};
+
+        reservedListings.forEach((l) => {
+          const region = getRegion(l.location);
+          if (l.category)
+            categoryCount[l.category] = (categoryCount[l.category] || 0) + 1;
+          if (region) regionCount[region] = (regionCount[region] || 0) + 1;
+        });
+
+        const topCategory = Object.entries(categoryCount).sort(
+          (a, b) => b[1] - a[1]
+        )[0]?.[0];
+        const topRegion = Object.entries(regionCount).sort(
+          (a, b) => b[1] - a[1]
+        )[0]?.[0];
+
+        const filteredSuggestions = listings.filter((l) => {
+          const region = getRegion(l.location);
+          return (
+            !reservedListingIds.includes(l.id) &&
+            ((topCategory && l.category === topCategory) ||
+              (topRegion &&
+                region?.toLowerCase() === topRegion?.toLowerCase()))
+          );
+        });
+
+        setSuggested(
+          filteredSuggestions.length > 0
+            ? filteredSuggestions
+            : listings.slice(0, 6)
+        );
+      } catch (err) {
+        console.error("Error fetching suggestions:", err);
+      }
+    };
+
+    if (listings.length > 0) fetchSuggestions();
+  }, [listings]);
+
+  // 🔹 Click Handlers
   const handleListingClick = (id) => {
     const user = getAuth().currentUser;
     user ? navigate(`/homes/${id}`) : navigate("/login");
@@ -251,41 +378,63 @@ const Pagination = () => {
     user ? navigate(`/services/${id}`) : navigate("/login");
   };
 
-  useEffect(() => {
-    const fetchListings = async () => {
-      try {
-        const listingsRef = collection(db, "listings");
-        const q = query(listingsRef, orderBy("createdAt", "desc"));
-        const snapshot = await getDocs(q);
-        const data = await Promise.all(
-          snapshot.docs.map(async (d) => {
-            const l = { id: d.id, ...d.data() };
-            if (l.hostId) {
-              const h = await getDoc(doc(db, "users", l.hostId));
-              l.hostName = h.exists()
-                ? h.data().fullName || h.data().name || "Unknown Host"
-                : "Unknown Host";
-            }
-            return l;
-          })
-        );
-        setListings(data.filter((l) => l.status === "Active"));
-      } catch (err) {
-        console.error("Error fetching listings:", err);
-      }
-    };
-    fetchListings();
-  }, []);
-
+  // 🔹 Split categories
   const homes = listings.filter((l) => l.superCategory === "Homes");
   const experiences = listings.filter((l) => l.superCategory === "Experiences");
   const services = listings.filter((l) => l.superCategory === "Services");
 
   return (
     <div className="w-full bg-beige min-h-screen py-10 space-y-12">
+      {/* 🧭 Search Results Section */}
+      {searchLoc && (
+        <div className="w-full mb-6 px-6 sm:px-14">
+          <h2 className="text-2xl sm:text-3xl font-bold text-olive-dark mb-3">
+            Search results for "{searchLoc}"
+            {searchDate ? ` on ${searchDate}` : ""}{" "}
+            {searchGuests ? `• ${searchGuests} guest(s)` : ""}
+          </h2>
+          {searchResults.length > 0 ? (
+            <div className=" ml-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 px-4 sm:px-10 justify-items-center">
+              {searchResults.map((listing) => (
+                <SlideshowCard
+                  key={listing.id}
+                  listing={listing}
+                  onListingClick={handleListingClick}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white/40 rounded-xl p-6 text-center text-gray-700">
+              No listings match your search.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 🏡 Suggested for You */}
+      {suggested.length > 0 && (
+        <CategorySection
+          title={
+            <div
+              className="flex items-center gap-2 text-olive-dark"
+              id="suggested-section"
+            >
+              <Home size={26} strokeWidth={2.5} />
+              <span>Suggested for You</span>
+            </div>
+          }
+          listings={suggested}
+          onListingClick={handleListingClick}
+        />
+      )}
+
+      {/* 🏠 Homes */}
       <CategorySection
         title={
-          <div className="flex items-center gap-2 text-olive-dark" id="homes-section">
+          <div
+            className="flex items-center gap-2 text-olive-dark"
+            id="homes-section"
+          >
             <Home size={26} strokeWidth={2.5} />
             <span>Homes</span>
           </div>
@@ -294,9 +443,13 @@ const Pagination = () => {
         onListingClick={handleListingClick}
       />
 
+      {/* 🌞 Experiences */}
       <CategorySection
         title={
-          <div className="flex items-center gap-2 text-olive-dark" id="experiences-section">
+          <div
+            className="flex items-center gap-2 text-olive-dark"
+            id="experiences-section"
+          >
             <Sun size={26} strokeWidth={2.5} />
             <span>Experiences</span>
           </div>
@@ -305,9 +458,13 @@ const Pagination = () => {
         onListingClick={handleExperiencesClick}
       />
 
+      {/* 🧰 Services */}
       <CategorySection
         title={
-          <div className="flex items-center gap-2 text-olive-dark" id="services-section">
+          <div
+            className="flex items-center gap-2 text-olive-dark"
+            id="services-section"
+          >
             <Wrench size={26} strokeWidth={2.5} />
             <span>Services</span>
           </div>
@@ -320,3 +477,4 @@ const Pagination = () => {
 };
 
 export default Pagination;
+
