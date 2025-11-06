@@ -181,7 +181,7 @@ const Reservations = () => {
 
     {/* 🔹 Filter Buttons */}
     <div className="flex gap-2 mt-4 md:mt-0">
-      {["all", "Confirmed", "Cancelled"].map((type) => (
+      {["all", "Confirmed","Completed" ,"Cancelled"].map((type) => (
         <button
           key={type}
           onClick={() => setFilter(type)}
@@ -220,6 +220,8 @@ const Reservations = () => {
                   ? "bg-green-100 text-green-700"
                   : reservation.status === "pending"
                     ? "bg-yellow-100 text-yellow-700"
+                    : reservation.status === "Completed" 
+                    ? "bg-blue-100 text-blue-700"
                     : "bg-red-100 text-red-700"
                   }`}
               >

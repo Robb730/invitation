@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 import MapSection from "../hostpage-comp/MapSection"; // adjust path if necessary
+import { Home, CheckCircle, XCircle, FileText } from "lucide-react";
 
 // ----- Main Component -----
 const Listings = ({ user }) => {
@@ -133,30 +134,30 @@ const Listings = ({ user }) => {
 
       {/* Edit Modal */}
       {selectedListing && (
-  <>
-    {selectedListing.superCategory === "Homes" && (
-      <EditModalHomes
-        listing={selectedListing}
-        onClose={() => setSelectedListing(null)}
-        onSave={handleSaveChanges}
-      />
-    )}
-    {selectedListing.superCategory === "Experiences" && (
-      <EditModalExperiences
-        listing={selectedListing}
-        onClose={() => setSelectedListing(null)}
-        onSave={handleSaveChanges}
-      />
-    )}
-    {selectedListing.superCategory === "Services" && (
-      <EditModalServices
-        listing={selectedListing}
-        onClose={() => setSelectedListing(null)}
-        onSave={handleSaveChanges}
-      />
-    )}
-  </>
-)}
+        <>
+          {selectedListing.superCategory === "Homes" && (
+            <EditModalHomes
+              listing={selectedListing}
+              onClose={() => setSelectedListing(null)}
+              onSave={handleSaveChanges}
+            />
+          )}
+          {selectedListing.superCategory === "Experiences" && (
+            <EditModalExperiences
+              listing={selectedListing}
+              onClose={() => setSelectedListing(null)}
+              onSave={handleSaveChanges}
+            />
+          )}
+          {selectedListing.superCategory === "Services" && (
+            <EditModalServices
+              listing={selectedListing}
+              onClose={() => setSelectedListing(null)}
+              onSave={handleSaveChanges}
+            />
+          )}
+        </>
+      )}
 
 
     </div>
@@ -185,68 +186,120 @@ const ListingCard = ({ listing, onEdit }) => {
     return () => clearInterval(intervalRef.current);
   }, [isHovered, images.length]);
 
-  const statusColor =
-    {
-      Active: "bg-green-100 text-green-700",
-      Inactive: "bg-gray-300 text-gray-700",
-      Draft: "bg-yellow-100 text-yellow-800",
-    }[listing.status] || "bg-gray-300 text-gray-700";
+  const statusStyles = {
+    Active: "bg-green-100 text-green-800",
+    Inactive: "bg-gray-200 text-gray-700",
+    Draft: "bg-yellow-100 text-yellow-800",
+  };
 
   return (
     <div
-      className="bg-white/40 backdrop-blur-md border border-white/30 rounded-2xl p-4 shadow-md hover:scale-[1.02] transition duration-300 relative overflow-hidden"
+      className="group relative bg-white/70 backdrop-blur-lg border border-white/30 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden hover:-translate-y-1"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
         setCurrentImageIndex(0);
       }}
     >
-      <div className="relative w-full h-48 rounded-xl overflow-hidden">
+      {/* Image Section */}
+      <div className="relative w-full h-52 overflow-hidden">
         {images.length > 0 ? (
           images.map((img, idx) => (
             <img
               key={idx}
               src={img}
               alt={listing.title}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${idx === currentImageIndex ? "opacity-100" : "opacity-0"
-                }`}
+              className={`absolute inset-0 w-full h-full object-cover rounded-t-2xl transition-opacity duration-700 ${
+                idx === currentImageIndex ? "opacity-100" : "opacity-0"
+              }`}
             />
           ))
         ) : (
-          <div className="flex items-center justify-center w-full h-full bg-gray-200 text-gray-500">
-            No image
+          <div className="flex items-center justify-center w-full h-full bg-gray-100 text-gray-400">
+            No Image
           </div>
         )}
-      </div>
 
-      <h3 className="text-lg font-semibold text-olive-dark mt-4">
-        {listing.title || "Untitled Listing"}
-      </h3>
-      <p className="text-sm text-olive-dark/70 mt-1">{listing.location.split(",").slice(0, 3).join(",") || "No location"}</p>
-      <p className="text-sm text-olive-dark/90 mt-2 font-medium">₱{listing.price || "0"}</p>
+        {/* Overlay gradient on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-      <div className="flex justify-between items-center mt-4">
-        <span className={`${statusColor} px-3 py-1 rounded-full text-xs font-medium`}>
+        {/* Status badge */}
+        <span
+          className={`absolute top-3 right-3 px-3 py-1 text-xs font-medium rounded-full shadow-sm ${
+            statusStyles[listing.status] || "bg-gray-200 text-gray-700"
+          }`}
+        >
           {listing.status}
         </span>
-        <button className="text-sm font-medium text-olive-dark hover:underline" onClick={onEdit}>
-          Edit
-        </button>
+      </div>
+
+      {/* Info Section */}
+      <div className="p-4 flex flex-col gap-1">
+        <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">
+          {listing.title || "Untitled Listing"}
+        </h3>
+        <p className="text-sm text-gray-500 line-clamp-1">
+          {listing.location?.split(",").slice(0, 3).join(", ") || "No location"}
+        </p>
+
+        <p className="text-base font-semibold text-green-700 mt-2">
+          ₱{listing.price?.toLocaleString() || "0"}
+        </p>
+
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={onEdit}
+            className="px-4 py-1.5 bg-[#3a3a2e] text-white rounded-lg text-sm font-medium hover:bg-[#4b4b3a] transition duration-200 shadow-sm hover:shadow-md"
+          >
+            Edit
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
+
 // ----- Stats Card -----
-const StatsCard = ({ title, count, bg, text, onClick }) => (
-  <div
-    className={`${bg} border border-white/30 rounded-2xl p-4 md:p-6 text-center shadow-md w-full sm:w-48 cursor-pointer`}
-    onClick={onClick}
-  >
-    <h3 className={`text-xl font-semibold ${text}`}>{title}</h3>
-    <p className={`text-3xl font-bold ${text} mt-2`}>{count}</p>
-  </div>
-);
+const StatsCard = ({ title, count, bg, text, onClick }) => {
+  // Pick an icon based on the card title
+  const iconMap = {
+    "Total Listings": <Home size={26} className="text-gray-700" />,
+    "Active Listings": <CheckCircle size={26} className="text-green-700" />,
+    "Inactive Listings": <XCircle size={26} className="text-red-700" />,
+    "Draft Listings": <FileText size={26} className="text-yellow-700" />,
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      className={`
+        ${bg}
+        ${text}
+        relative flex flex-col items-center justify-center 
+        rounded-2xl p-6 text-center 
+        shadow-md hover:shadow-xl 
+        border border-white/30 backdrop-blur-lg
+        cursor-pointer transition-all duration-300
+        hover:scale-[1.03] hover:-translate-y-1
+      `}
+    >
+      {/* Icon */}
+      <div className="mb-3 p-3 bg-white/60 rounded-full shadow-sm group-hover:shadow-md transition">
+        {iconMap[title] || <Home size={26} className="text-gray-700" />}
+      </div>
+
+      {/* Title */}
+      <h3 className="text-lg font-semibold tracking-wide">{title}</h3>
+
+      {/* Count */}
+      <p className="text-4xl font-bold mt-1">{count}</p>
+
+      {/* Glow ring effect */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500"></div>
+    </div>
+  );
+};
 
 // ----- Edit Modal (mirrors Add Listing modal + MapSection) -----
 const EditModalHomes = ({ listing, onClose, onSave }) => {
@@ -592,13 +645,7 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
           {/* Buttons */}
           <div className="flex justify-between mt-6">
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-5 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
+              
               <button
                 type="button"
                 onClick={handleDelete}
@@ -639,6 +686,7 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
   const [lat, setLat] = useState(listing.latitude ?? 14.5995);
   const [lng, setLng] = useState(listing.longitude ?? 120.9842);
   const [selectedAddress, setSelectedAddress] = useState(listing.location || "");
+  const [status, setStatus] = useState(listing.status || "Active");
 
   const uploadToCloudinary = async (file) => {
     const form = new FormData();
@@ -647,6 +695,20 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
     const res = await fetch("https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload", { method: "POST", body: form });
     const data = await res.json();
     return data.secure_url;
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+    try {
+      const listingRef = doc(db, "listings", listing.id);
+      await deleteDoc(listingRef);
+      alert("Listing deleted successfully!");
+      onClose();
+      window.dispatchEvent(new Event("refreshListings"));
+    } catch (error) {
+      console.error("Error deleting listing:", error);
+      alert("Failed to delete listing.");
+    }
   };
 
   const handleDeleteExistingImage = (index) => setImages((prev) => prev.filter((_, i) => i !== index));
@@ -680,6 +742,7 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
       latitude: lat,
       longitude: lng,
       location: selectedAddress,
+      status: status,
     };
     await onSave(updatedListing);
     setUploading(false);
@@ -742,6 +805,20 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
             <label className="font-medium text-olive-dark">Description</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="p-3 border rounded-lg w-full" required />
           </div>
+          {/* Status */}
+          <div>
+            <label className="font-medium text-olive-dark">Status</label>
+            <select
+              name="status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="border border-gray-300 rounded-lg p-2 w-full focus:ring-2 focus:ring-olive/50"
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="Draft">Draft</option>
+            </select>
+          </div>
 
           <div>
             <label className="font-medium text-olive-dark">Images (max 4)</label>
@@ -770,9 +847,28 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
 
           <MapSection lat={lat} lng={lng} setLat={setLat} setLng={setLng} setSelectedAddress={setSelectedAddress} />
 
-          <button type="submit" disabled={uploading} className="bg-olive-dark text-white py-2 rounded-lg hover:bg-olive transition">
-            {uploading ? "Saving..." : "Save Changes"}
-          </button>
+          {/* Buttons */}
+          <div className="flex justify-between mt-6">
+            <div className="flex gap-3">
+              
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="bg-red-900 text-white py-2 rounded-lg w-44 hover:bg-red-700 transition duration-300 font-medium"
+              >
+                Delete
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={uploading}
+              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${uploading ? "opacity-60 cursor-not-allowed" : ""
+                }`}
+            >
+              {uploading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -802,6 +898,20 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
     const res = await fetch("https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload", { method: "POST", body: form });
     const data = await res.json();
     return data.secure_url;
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+    try {
+      const listingRef = doc(db, "listings", listing.id);
+      await deleteDoc(listingRef);
+      alert("Listing deleted successfully!");
+      onClose();
+      window.dispatchEvent(new Event("refreshListings"));
+    } catch (error) {
+      console.error("Error deleting listing:", error);
+      alert("Failed to delete listing.");
+    }
   };
 
   const handleDeleteExistingImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
@@ -918,9 +1028,28 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
 
           <MapSection lat={lat} lng={lng} setLat={setLat} setLng={setLng} setSelectedAddress={setSelectedAddress} />
 
-          <button type="submit" disabled={uploading} className="bg-olive-dark text-white py-2 rounded-lg hover:bg-olive transition">
-            {uploading ? "Saving..." : "Save Changes"}
-          </button>
+          {/* Buttons */}
+          <div className="flex justify-between mt-6">
+            <div className="flex gap-3">
+              
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="bg-red-900 text-white py-2 rounded-lg w-44 hover:bg-red-700 transition duration-300 font-medium"
+              >
+                Delete
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={uploading}
+              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${uploading ? "opacity-60 cursor-not-allowed" : ""
+                }`}
+            >
+              {uploading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
         </form>
       </div>
     </div>

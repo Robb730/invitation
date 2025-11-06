@@ -54,7 +54,7 @@ const HostPage = () => {
   const renderContent = () => {
   switch (activePage) {
     case "Dashboard":
-      return <Dashboard />;
+  return <Dashboard setActivePage={setActivePage} />;
     case "My Listings":
       return <Listings user={user} />;
     case "Reservations":
