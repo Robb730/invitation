@@ -148,6 +148,8 @@ const SlideshowCard = ({ listing, onListingClick }) => {
 };
 
 /* --- Category Section (modern layout) --- */
+/* --- Category Section (modern layout) --- */
+/* --- Category Section (modern layout) --- */
 const CategorySection = ({ title, listings, onListingClick }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const listingsPerPage = 6;
@@ -161,16 +163,17 @@ const CategorySection = ({ title, listings, onListingClick }) => {
   if (listings.length === 0) return null;
 
   return (
-    <div className="w-full mb-14">
+    <div className="w-full mb-14 relative">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-center px-6 sm:px-14 mb-6">
+      <div className="px-6 sm:px-14 mb-6 relative">
+        {/* Category Title (left) */}
         <h2 className="text-2xl sm:text-3xl font-bold text-charcoal flex items-center gap-3">
           {title}
         </h2>
 
-        {/* Pagination */}
+        {/* Page Numbers (centered) */}
         {totalPages > 1 && (
-          <div className="flex items-center gap-2 mt-4 sm:mt-0">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
             {Array.from({ length: totalPages }).map((_, index) => (
               <button
                 key={index}
@@ -198,28 +201,11 @@ const CategorySection = ({ title, listings, onListingClick }) => {
           />
         ))}
       </div>
-
-      {/* Bottom Pagination (for mobile usability) */}
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-10 gap-2">
-          {Array.from({ length: totalPages }).map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentPage(index + 1)}
-              className={`px-3 py-1.5 rounded-full font-semibold text-sm transition-all duration-300 ${
-                currentPage === index + 1
-                  ? "bg-olive-dark text-white shadow-md"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              {index + 1}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 };
+
+
 
 /* --- Main Pagination Component --- */
 

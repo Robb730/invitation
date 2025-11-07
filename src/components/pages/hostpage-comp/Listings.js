@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   collection,
   getDocs,
@@ -11,6 +17,7 @@ import {
 import { db } from "../../../firebaseConfig";
 import MapSection from "../hostpage-comp/MapSection"; // adjust path if necessary
 import { Home, CheckCircle, XCircle, FileText } from "lucide-react";
+import { updateHostPoints } from "../../../utils/pointSystem";
 
 // ----- Main Component -----
 const Listings = ({ user }) => {
@@ -74,15 +81,24 @@ const Listings = ({ user }) => {
         location: updatedListing.location,
         category: updatedListing.category,
         status: updatedListing.status,
-        price: typeof updatedListing.price === "string" ? parseFloat(updatedListing.price) : updatedListing.price,
+        price:
+          typeof updatedListing.price === "string"
+            ? parseFloat(updatedListing.price)
+            : updatedListing.price,
         priceType: updatedListing.priceType,
         guests: updatedListing.guests ? parseInt(updatedListing.guests) : null,
-        bedrooms: updatedListing.bedrooms ? parseInt(updatedListing.bedrooms) : null,
-        bathrooms: updatedListing.bathrooms ? parseInt(updatedListing.bathrooms) : null,
+        bedrooms: updatedListing.bedrooms
+          ? parseInt(updatedListing.bedrooms)
+          : null,
+        bathrooms: updatedListing.bathrooms
+          ? parseInt(updatedListing.bathrooms)
+          : null,
         description: updatedListing.description,
         images: updatedListing.images || [],
         promoCode: updatedListing.promoCode || null,
-        discount: updatedListing.discount ? parseFloat(updatedListing.discount) : null,
+        discount: updatedListing.discount
+          ? parseFloat(updatedListing.discount)
+          : null,
         latitude: updatedListing.latitude || null,
         longitude: updatedListing.longitude || null,
         // keep hostId/createdAt untouched
@@ -113,17 +129,44 @@ const Listings = ({ user }) => {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 mb-8">
-        <StatsCard title="Total Listings" count={stats.total} bg="bg-white/60" text="text-olive-dark" />
-        <StatsCard title="Active Listings" count={stats.active} bg="bg-green-50" text="text-green-800" onClick={() => setFilter("Active")} />
-        <StatsCard title="Inactive Listings" count={stats.inactive} bg="bg-red-50" text="text-red-800" onClick={() => setFilter("Inactive")} />
-        <StatsCard title="Draft Listings" count={stats.draft} bg="bg-yellow-100" text="text-yellow-800" onClick={() => setFilter("Draft")} />
+        <StatsCard
+          title="Total Listings"
+          count={stats.total}
+          bg="bg-white/60"
+          text="text-olive-dark"
+        />
+        <StatsCard
+          title="Active Listings"
+          count={stats.active}
+          bg="bg-green-50"
+          text="text-green-800"
+          onClick={() => setFilter("Active")}
+        />
+        <StatsCard
+          title="Inactive Listings"
+          count={stats.inactive}
+          bg="bg-red-50"
+          text="text-red-800"
+          onClick={() => setFilter("Inactive")}
+        />
+        <StatsCard
+          title="Draft Listings"
+          count={stats.draft}
+          bg="bg-yellow-100"
+          text="text-yellow-800"
+          onClick={() => setFilter("Draft")}
+        />
       </div>
 
       {/* Listings Grid */}
       {filteredListings.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredListings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} onEdit={() => setSelectedListing(listing)} />
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              onEdit={() => setSelectedListing(listing)}
+            />
           ))}
         </div>
       ) : (
@@ -158,8 +201,6 @@ const Listings = ({ user }) => {
           )}
         </>
       )}
-
-
     </div>
   );
 };
@@ -259,7 +300,6 @@ const ListingCard = ({ listing, onEdit }) => {
   );
 };
 
-
 // ----- Stats Card -----
 const StatsCard = ({ title, count, bg, text, onClick }) => {
   // Pick an icon based on the card title
@@ -315,14 +355,22 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
   const [promoCode, setPromoCode] = useState(listing.promoCode || "");
   const [discount, setDiscount] = useState(listing.discount ?? "");
   const [description, setDescription] = useState(listing.description || "");
-  const [images, setImages] = useState(Array.isArray(listing.images) ? listing.images : (listing.images ? [listing.images] : [])); // existing image URLs
+  const [images, setImages] = useState(
+    Array.isArray(listing.images)
+      ? listing.images
+      : listing.images
+      ? [listing.images]
+      : []
+  ); // existing image URLs
   const [newImages, setNewImages] = useState([]); // File objects to upload
   const [uploading, setUploading] = useState(false);
 
   // Map-related states
   const [lat, setLat] = useState(listing.latitude ?? listing.lat ?? 14.5995);
   const [lng, setLng] = useState(listing.longitude ?? listing.lng ?? 120.9842);
-  const [selectedAddress, setSelectedAddress] = useState(listing.location || listing.address || "");
+  const [selectedAddress, setSelectedAddress] = useState(
+    listing.location || listing.address || ""
+  );
 
   // Keep form in sync when the `listing` prop changes
   useEffect(() => {
@@ -337,7 +385,13 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
     setPromoCode(listing.promoCode || "");
     setDiscount(listing.discount ?? "");
     setDescription(listing.description || "");
-    setImages(Array.isArray(listing.images) ? listing.images : (listing.images ? [listing.images] : []));
+    setImages(
+      Array.isArray(listing.images)
+        ? listing.images
+        : listing.images
+        ? [listing.images]
+        : []
+    );
     setNewImages([]);
     setLat(listing.latitude ?? listing.lat ?? 14.5995);
     setLng(listing.longitude ?? listing.lng ?? 120.9842);
@@ -349,10 +403,13 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
     const form = new FormData();
     form.append("file", file);
     form.append("upload_preset", "kubo_unsigned");
-    const res = await fetch("https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload", {
-      method: "POST",
-      body: form,
-    });
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload",
+      {
+        method: "POST",
+        body: form,
+      }
+    );
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || "Upload failed");
     return data.secure_url;
@@ -383,7 +440,9 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
       // upload new images if any
       let uploadedURLs = [];
       if (newImages.length > 0) {
-        uploadedURLs = await Promise.all(newImages.map((f) => uploadToCloudinary(f)));
+        uploadedURLs = await Promise.all(
+          newImages.map((f) => uploadToCloudinary(f))
+        );
       }
 
       const updatedImages = [...images, ...uploadedURLs].slice(0, 4);
@@ -393,7 +452,12 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
         title,
         category,
         status,
-        price: price !== "" ? (typeof price === "string" ? parseFloat(price) : price) : null,
+        price:
+          price !== ""
+            ? typeof price === "string"
+              ? parseFloat(price)
+              : price
+            : null,
         priceType,
         guests: guests !== "" ? parseInt(guests) : null,
         bedrooms: bedrooms !== "" ? parseInt(bedrooms) : null,
@@ -417,7 +481,8 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+    if (!window.confirm("Are you sure you want to delete this listing?"))
+      return;
     try {
       const listingRef = doc(db, "listings", listing.id);
       await deleteDoc(listingRef);
@@ -450,7 +515,9 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-olive-dark mb-1">Property Title</label>
+            <label className="block text-sm font-medium text-olive-dark mb-1">
+              Property Title
+            </label>
             <input
               type="text"
               placeholder="e.g., Cozy Cabin near the Beach"
@@ -463,7 +530,9 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
 
           {/* Map Picker */}
           <div>
-            <label className="block text-sm font-medium text-olive-dark mb-1">Select Property Location</label>
+            <label className="block text-sm font-medium text-olive-dark mb-1">
+              Select Property Location
+            </label>
             <div className="rounded-xl border border-gray-300 overflow-hidden">
               <div style={{ height: "250px", width: "100%" }}>
                 <MapSection
@@ -475,8 +544,12 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
                 />
               </div>
             </div>
-            <p className="text-sm text-gray-700 mt-2">📌 Coordinates: {Number(lat).toFixed(4)}, {Number(lng).toFixed(4)}</p>
-            <p className="text-sm text-gray-500 italic">🗺️ {selectedAddress || "Click on the map to choose a location"}</p>
+            <p className="text-sm text-gray-700 mt-2">
+              📌 Coordinates: {Number(lat).toFixed(4)}, {Number(lng).toFixed(4)}
+            </p>
+            <p className="text-sm text-gray-500 italic">
+              🗺️ {selectedAddress || "Click on the map to choose a location"}
+            </p>
           </div>
 
           {/* Category & Price */}
@@ -586,7 +659,11 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
               <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {images.map((img, idx) => (
                   <div key={idx} className="relative">
-                    <img src={img} alt={`listing-${idx}`} className="h-24 w-full object-cover rounded-lg border" />
+                    <img
+                      src={img}
+                      alt={`listing-${idx}`}
+                      className="h-24 w-full object-cover rounded-lg border"
+                    />
                     <button
                       type="button"
                       onClick={() => handleDeleteExistingImage(idx)}
@@ -604,7 +681,11 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
               <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {newImages.map((file, idx) => (
                   <div key={idx} className="relative">
-                    <img src={URL.createObjectURL(file)} alt={`new-${idx}`} className="h-24 w-full object-cover rounded-lg border" />
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`new-${idx}`}
+                      className="h-24 w-full object-cover rounded-lg border"
+                    />
                     <button
                       type="button"
                       onClick={() => handleRemoveNewImage(idx)}
@@ -627,42 +708,118 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
             />
           </div>
 
-          {/* Status */}
-          <div>
-            <label className="font-medium text-olive-dark">Status</label>
-            <select
-              name="status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="border border-gray-300 rounded-lg p-2 w-full focus:ring-2 focus:ring-olive/50"
-            >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-              <option value="Draft">Draft</option>
-            </select>
-          </div>
-
           {/* Buttons */}
           <div className="flex justify-between mt-6">
             <div className="flex gap-3">
-              
               <button
                 type="button"
                 onClick={handleDelete}
-                className="bg-red-900 text-white py-2 rounded-lg w-44 hover:bg-red-700 transition duration-300 font-medium"
+                className="bg-red-900 text-white py-2 rounded-lg w-40 hover:bg-red-700 transition duration-300 font-medium"
               >
                 Delete
               </button>
             </div>
 
-            <button
-              type="submit"
-              disabled={uploading}
-              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${uploading ? "opacity-60 cursor-not-allowed" : ""
+            <div className="flex gap-3">
+              {/* ✅ Show Publish button only if status is Draft */}
+              {status === "Draft" && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    // ✅ Check for required fields
+                    const requiredFields = [
+                      { name: "Title", value: title },
+                      { name: "Category", value: category },
+                      { name: "Price", value: price },
+                      { name: "Description", value: description },
+                      { name: "Location", value: selectedAddress },
+                    ];
+
+                    const missingField = requiredFields.find(
+                      (field) =>
+                        !field.value || field.value.toString().trim() === ""
+                    );
+
+                    if (missingField) {
+                      alert(
+                        `Please fill out the ${missingField.name} field before publishing.`
+                      );
+                      return;
+                    }
+
+                    if (images.length === 0 && newImages.length === 0) {
+                      alert(
+                        "Please upload at least one image before publishing."
+                      );
+                      return;
+                    }
+
+                    try {
+                      // 🔹 Upload new images if there are any
+                      let uploadedURLs = [];
+                      if (newImages.length > 0) {
+                        uploadedURLs = await Promise.all(
+                          newImages.map(uploadToCloudinary)
+                        );
+                      }
+
+                      // 🔹 Combine existing and new images (limit to 4)
+                      const finalImages = [...images, ...uploadedURLs].slice(
+                        0,
+                        4
+                      );
+
+                      // 🔹 Update Firestore with images + status
+                      const listingRef = doc(db, "listings", listing.id);
+                      await updateDoc(listingRef, {
+                        title,
+                        category,
+                        price:
+                          price !== ""
+                            ? typeof price === "string"
+                              ? parseFloat(price)
+                              : price
+                            : null,
+                        priceType,
+                        guests: guests !== "" ? parseInt(guests) : null,
+                        bedrooms: bedrooms !== "" ? parseInt(bedrooms) : null,
+                        bathrooms:
+                          bathrooms !== "" ? parseInt(bathrooms) : null,
+                        description,
+                        images: finalImages,
+                        latitude: lat,
+                        longitude: lng,
+                        location: selectedAddress || "",
+                        status: "Active",
+                      });
+
+                      const hostId = listing.hostId;
+
+                      alert("🎉 Listing published successfully!");
+                      onClose();
+                      updateHostPoints(hostId, 10); // Award points for publishing
+                      window.dispatchEvent(new Event("refreshListings"));
+                    } catch (error) {
+                      console.error("Error publishing listing:", error);
+                      alert("Failed to publish listing.");
+                    }
+                  }}
+                  className="bg-green-700 text-white py-2 rounded-lg w-40 hover:bg-green-600 transition duration-300 font-medium"
+                >
+                  Publish
+                </button>
+              )}
+
+              <button
+                type="submit"
+                disabled={uploading}
+                className={`bg-olive-dark text-white py-2 rounded-lg w-40 hover:bg-olive transition duration-300 font-medium ${
+                  uploading ? "opacity-60 cursor-not-allowed" : ""
                 }`}
-            >
-              {uploading ? "Saving..." : "Save Changes"}
-            </button>
+              >
+                {uploading ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -680,25 +837,33 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
   const [promoCode, setPromoCode] = useState(listing.promoCode || "");
   const [discount, setDiscount] = useState(listing.discount ?? "");
   const [description, setDescription] = useState(listing.description || "");
-  const [images, setImages] = useState(Array.isArray(listing.images) ? listing.images : []);
+  const [images, setImages] = useState(
+    Array.isArray(listing.images) ? listing.images : []
+  );
   const [newImages, setNewImages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [lat, setLat] = useState(listing.latitude ?? 14.5995);
   const [lng, setLng] = useState(listing.longitude ?? 120.9842);
-  const [selectedAddress, setSelectedAddress] = useState(listing.location || "");
+  const [selectedAddress, setSelectedAddress] = useState(
+    listing.location || ""
+  );
   const [status, setStatus] = useState(listing.status || "Active");
 
   const uploadToCloudinary = async (file) => {
     const form = new FormData();
     form.append("file", file);
     form.append("upload_preset", "kubo_unsigned");
-    const res = await fetch("https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload", { method: "POST", body: form });
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload",
+      { method: "POST", body: form }
+    );
     const data = await res.json();
     return data.secure_url;
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+    if (!window.confirm("Are you sure you want to delete this listing?"))
+      return;
     try {
       const listingRef = doc(db, "listings", listing.id);
       await deleteDoc(listingRef);
@@ -711,7 +876,8 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
     }
   };
 
-  const handleDeleteExistingImage = (index) => setImages((prev) => prev.filter((_, i) => i !== index));
+  const handleDeleteExistingImage = (index) =>
+    setImages((prev) => prev.filter((_, i) => i !== index));
   const handleNewImages = (e) => {
     const files = Array.from(e.target.files);
     if (images.length + files.length > 4) {
@@ -720,13 +886,15 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
     }
     setNewImages((prev) => [...prev, ...files]);
   };
-  const handleRemoveNewImage = (index) => setNewImages((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveNewImage = (index) =>
+    setNewImages((prev) => prev.filter((_, i) => i !== index));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUploading(true);
     let uploadedURLs = [];
-    if (newImages.length > 0) uploadedURLs = await Promise.all(newImages.map(uploadToCloudinary));
+    if (newImages.length > 0)
+      uploadedURLs = await Promise.all(newImages.map(uploadToCloudinary));
     const updatedListing = {
       ...listing,
       title,
@@ -751,18 +919,36 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm px-3">
       <div className="bg-white/95 p-6 md:p-8 rounded-2xl shadow-2xl w-[95%] max-w-2xl overflow-y-auto max-h-[90vh] relative">
-        <button className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl" onClick={onClose}>×</button>
-        <h2 className="text-2xl font-semibold text-olive-dark text-center mb-2">Edit Experience</h2>
+        <button
+          className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl"
+          onClick={onClose}
+        >
+          ×
+        </button>
+        <h2 className="text-2xl font-semibold text-olive-dark text-center mb-2">
+          Edit Experience
+        </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
             <label className="font-medium text-olive-dark">Title</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="p-3 border rounded-lg w-full" required />
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="p-3 border rounded-lg w-full"
+              required
+            />
           </div>
 
           <div>
             <label className="font-medium text-olive-dark">Category</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="p-3 border rounded-lg w-full" required>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="p-3 border rounded-lg w-full"
+              required
+            >
               <option value="">Select Category</option>
               <option value="City Tour">City Tour</option>
               <option value="Hiking Adventure">Cooking Class</option>
@@ -772,19 +958,39 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
 
           <div>
             <label className="font-medium text-olive-dark">Duration</label>
-            <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} className="p-3 border rounded-lg w-full" />
+            <input
+              type="text"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="p-3 border rounded-lg w-full"
+            />
           </div>
 
           <div>
             <label className="font-medium text-olive-dark">Schedule</label>
-            <input type="text" value={schedule} onChange={(e) => setSchedule(e.target.value)} className="p-3 border rounded-lg w-full" />
+            <input
+              type="text"
+              value={schedule}
+              onChange={(e) => setSchedule(e.target.value)}
+              className="p-3 border rounded-lg w-full"
+            />
           </div>
 
           <div>
             <label className="font-medium text-olive-dark">Price</label>
             <div className="flex gap-2">
-              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="p-3 border rounded-lg w-2/3" required />
-              <select value={priceType} onChange={(e) => setPriceType(e.target.value)} className="p-3 border rounded-lg w-1/3">
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="p-3 border rounded-lg w-2/3"
+                required
+              />
+              <select
+                value={priceType}
+                onChange={(e) => setPriceType(e.target.value)}
+                className="p-3 border rounded-lg w-1/3"
+              >
                 <option value="per person">/ Person</option>
               </select>
             </div>
@@ -793,17 +999,35 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="font-medium text-olive-dark">Promo Code</label>
-              <input type="text" value={promoCode} onChange={(e) => setPromoCode(e.target.value)} className="p-3 border rounded-lg w-full" />
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                className="p-3 border rounded-lg w-full"
+              />
             </div>
             <div>
-              <label className="font-medium text-olive-dark">Discount (%)</label>
-              <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} className="p-3 border rounded-lg w-full" />
+              <label className="font-medium text-olive-dark">
+                Discount (%)
+              </label>
+              <input
+                type="number"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                className="p-3 border rounded-lg w-full"
+              />
             </div>
           </div>
 
           <div>
             <label className="font-medium text-olive-dark">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="p-3 border rounded-lg w-full" required />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="3"
+              className="p-3 border rounded-lg w-full"
+              required
+            />
           </div>
           {/* Status */}
           <div>
@@ -821,13 +1045,25 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
           </div>
 
           <div>
-            <label className="font-medium text-olive-dark">Images (max 4)</label>
+            <label className="font-medium text-olive-dark">
+              Images (max 4)
+            </label>
             {images.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 {images.map((img, idx) => (
                   <div key={idx} className="relative">
-                    <img src={img} alt="existing" className="h-24 w-full object-cover rounded-lg border" />
-                    <button type="button" onClick={() => handleDeleteExistingImage(idx)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
+                    <img
+                      src={img}
+                      alt="existing"
+                      className="h-24 w-full object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExistingImage(idx)}
+                      className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))}
               </div>
@@ -836,21 +1072,42 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 {newImages.map((file, idx) => (
                   <div key={idx} className="relative">
-                    <img src={URL.createObjectURL(file)} alt="new" className="h-24 w-full object-cover rounded-lg border" />
-                    <button type="button" onClick={() => handleRemoveNewImage(idx)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt="new"
+                      className="h-24 w-full object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveNewImage(idx)}
+                      className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))}
               </div>
             )}
-            <input type="file" accept="image/*" multiple onChange={handleNewImages} className="block w-full border p-2 rounded-lg" />
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleNewImages}
+              className="block w-full border p-2 rounded-lg"
+            />
           </div>
 
-          <MapSection lat={lat} lng={lng} setLat={setLat} setLng={setLng} setSelectedAddress={setSelectedAddress} />
+          <MapSection
+            lat={lat}
+            lng={lng}
+            setLat={setLat}
+            setLng={setLng}
+            setSelectedAddress={setSelectedAddress}
+          />
 
           {/* Buttons */}
           <div className="flex justify-between mt-6">
             <div className="flex gap-3">
-              
               <button
                 type="button"
                 onClick={handleDelete}
@@ -863,8 +1120,9 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
             <button
               type="submit"
               disabled={uploading}
-              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${uploading ? "opacity-60 cursor-not-allowed" : ""
-                }`}
+              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${
+                uploading ? "opacity-60 cursor-not-allowed" : ""
+              }`}
             >
               {uploading ? "Saving..." : "Save Changes"}
             </button>
@@ -880,28 +1138,38 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
   const [category, setCategory] = useState(listing.category || "");
   const [price, setPrice] = useState(listing.price ?? "");
   const [priceType, setPriceType] = useState(listing.priceType || "per hour");
-  const [experienceLevel, setExperienceLevel] = useState(listing.experienceLevel || "");
+  const [experienceLevel, setExperienceLevel] = useState(
+    listing.experienceLevel || ""
+  );
   const [promoCode, setPromoCode] = useState(listing.promoCode || "");
   const [discount, setDiscount] = useState(listing.discount ?? "");
   const [description, setDescription] = useState(listing.description || "");
-  const [images, setImages] = useState(Array.isArray(listing.images) ? listing.images : []);
+  const [images, setImages] = useState(
+    Array.isArray(listing.images) ? listing.images : []
+  );
   const [newImages, setNewImages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [lat, setLat] = useState(listing.latitude ?? 14.5995);
   const [lng, setLng] = useState(listing.longitude ?? 120.9842);
-  const [selectedAddress, setSelectedAddress] = useState(listing.location || "");
+  const [selectedAddress, setSelectedAddress] = useState(
+    listing.location || ""
+  );
 
   const uploadToCloudinary = async (file) => {
     const form = new FormData();
     form.append("file", file);
     form.append("upload_preset", "kubo_unsigned");
-    const res = await fetch("https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload", { method: "POST", body: form });
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload",
+      { method: "POST", body: form }
+    );
     const data = await res.json();
     return data.secure_url;
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+    if (!window.confirm("Are you sure you want to delete this listing?"))
+      return;
     try {
       const listingRef = doc(db, "listings", listing.id);
       await deleteDoc(listingRef);
@@ -914,18 +1182,24 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
     }
   };
 
-  const handleDeleteExistingImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
+  const handleDeleteExistingImage = (i) =>
+    setImages((prev) => prev.filter((_, idx) => idx !== i));
   const handleNewImages = (e) => {
     const files = Array.from(e.target.files);
-    if (images.length + files.length > 4) return alert("You can upload up to 4 images only.");
+    if (images.length + files.length > 4)
+      return alert("You can upload up to 4 images only.");
     setNewImages((prev) => [...prev, ...files]);
   };
-  const handleRemoveNewImage = (i) => setNewImages((prev) => prev.filter((_, idx) => idx !== i));
+  const handleRemoveNewImage = (i) =>
+    setNewImages((prev) => prev.filter((_, idx) => idx !== i));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUploading(true);
-    const uploadedURLs = newImages.length > 0 ? await Promise.all(newImages.map(uploadToCloudinary)) : [];
+    const uploadedURLs =
+      newImages.length > 0
+        ? await Promise.all(newImages.map(uploadToCloudinary))
+        : [];
     const updatedListing = {
       ...listing,
       title,
@@ -948,18 +1222,36 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm px-3">
       <div className="bg-white/95 p-6 md:p-8 rounded-2xl shadow-2xl w-[95%] max-w-2xl overflow-y-auto max-h-[90vh] relative">
-        <button className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl" onClick={onClose}>×</button>
-        <h2 className="text-2xl font-semibold text-olive-dark text-center mb-2">Edit Service</h2>
+        <button
+          className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl"
+          onClick={onClose}
+        >
+          ×
+        </button>
+        <h2 className="text-2xl font-semibold text-olive-dark text-center mb-2">
+          Edit Service
+        </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
             <label className="font-medium text-olive-dark">Title</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="p-3 border rounded-lg w-full" required />
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="p-3 border rounded-lg w-full"
+              required
+            />
           </div>
 
           <div>
             <label className="font-medium text-olive-dark">Category</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="p-3 border rounded-lg w-full" required>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="p-3 border rounded-lg w-full"
+              required
+            >
               <option value="">Select Category</option>
               <option value="Chef">Chef</option>
               <option value="Makeup Artist">Makeup Artist</option>
@@ -970,15 +1262,32 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
           </div>
 
           <div>
-            <label className="font-medium text-olive-dark">Experience Level</label>
-            <input type="text" value={experienceLevel} onChange={(e) => setExperienceLevel(e.target.value)} className="p-3 border rounded-lg w-full" />
+            <label className="font-medium text-olive-dark">
+              Experience Level
+            </label>
+            <input
+              type="text"
+              value={experienceLevel}
+              onChange={(e) => setExperienceLevel(e.target.value)}
+              className="p-3 border rounded-lg w-full"
+            />
           </div>
 
           <div>
             <label className="font-medium text-olive-dark">Price</label>
             <div className="flex gap-2">
-              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="p-3 border rounded-lg w-2/3" required />
-              <select value={priceType} onChange={(e) => setPriceType(e.target.value)} className="p-3 border rounded-lg w-1/3">
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="p-3 border rounded-lg w-2/3"
+                required
+              />
+              <select
+                value={priceType}
+                onChange={(e) => setPriceType(e.target.value)}
+                className="p-3 border rounded-lg w-1/3"
+              >
                 <option value="per hour">/ Hour</option>
                 <option value="per day">/ Day</option>
               </select>
@@ -988,27 +1297,57 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="font-medium text-olive-dark">Promo Code</label>
-              <input type="text" value={promoCode} onChange={(e) => setPromoCode(e.target.value)} className="p-3 border rounded-lg w-full" />
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                className="p-3 border rounded-lg w-full"
+              />
             </div>
             <div>
-              <label className="font-medium text-olive-dark">Discount (%)</label>
-              <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} className="p-3 border rounded-lg w-full" />
+              <label className="font-medium text-olive-dark">
+                Discount (%)
+              </label>
+              <input
+                type="number"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                className="p-3 border rounded-lg w-full"
+              />
             </div>
           </div>
 
           <div>
             <label className="font-medium text-olive-dark">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="p-3 border rounded-lg w-full" required />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="3"
+              className="p-3 border rounded-lg w-full"
+              required
+            />
           </div>
 
           <div>
-            <label className="font-medium text-olive-dark">Images (max 4)</label>
+            <label className="font-medium text-olive-dark">
+              Images (max 4)
+            </label>
             {images.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 {images.map((img, i) => (
                   <div key={i} className="relative">
-                    <img src={img} alt="existing" className="h-24 w-full object-cover rounded-lg border" />
-                    <button type="button" onClick={() => handleDeleteExistingImage(i)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
+                    <img
+                      src={img}
+                      alt="existing"
+                      className="h-24 w-full object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExistingImage(i)}
+                      className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))}
               </div>
@@ -1017,21 +1356,42 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 {newImages.map((file, i) => (
                   <div key={i} className="relative">
-                    <img src={URL.createObjectURL(file)} alt="preview" className="h-24 w-full object-cover rounded-lg border" />
-                    <button type="button" onClick={() => handleRemoveNewImage(i)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt="preview"
+                      className="h-24 w-full object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveNewImage(i)}
+                      className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))}
               </div>
             )}
-            <input type="file" accept="image/*" multiple onChange={handleNewImages} className="block w-full border p-2 rounded-lg" />
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleNewImages}
+              className="block w-full border p-2 rounded-lg"
+            />
           </div>
 
-          <MapSection lat={lat} lng={lng} setLat={setLat} setLng={setLng} setSelectedAddress={setSelectedAddress} />
+          <MapSection
+            lat={lat}
+            lng={lng}
+            setLat={setLat}
+            setLng={setLng}
+            setSelectedAddress={setSelectedAddress}
+          />
 
           {/* Buttons */}
           <div className="flex justify-between mt-6">
             <div className="flex gap-3">
-              
               <button
                 type="button"
                 onClick={handleDelete}
@@ -1044,8 +1404,9 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
             <button
               type="submit"
               disabled={uploading}
-              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${uploading ? "opacity-60 cursor-not-allowed" : ""
-                }`}
+              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${
+                uploading ? "opacity-60 cursor-not-allowed" : ""
+              }`}
             >
               {uploading ? "Saving..." : "Save Changes"}
             </button>
@@ -1055,8 +1416,5 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
     </div>
   );
 };
-
-
-
 
 export default Listings;

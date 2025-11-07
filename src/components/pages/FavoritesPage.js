@@ -129,8 +129,14 @@ const FavoritesPage = () => {
         </h1>
 
         {loading ? (
-          <p className="text-gray-500 text-center">Loading favorites...</p>
-        ) : favorites.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="relative w-20 h-20 mb-6">
+                <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-t-olive rounded-full animate-spin"></div>
+              </div>
+              <p className="text-gray-600 text-lg animate-pulse">Loading your favorites...</p>
+            </div>
+          )  : favorites.length === 0 ? (
           <div className="text-center mt-20">
             <AiFillHeart className="text-6xl text-olive mx-auto mb-4 animate-pulse" />
             <p className="text-gray-500 text-lg">

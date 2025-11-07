@@ -23,6 +23,7 @@ import {
 import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
+import axios from "axios";
 
 const Reservations = () => {
   const [reservations, setReservations] = useState([]);
@@ -181,7 +182,7 @@ const Reservations = () => {
 
     {/* 🔹 Filter Buttons */}
     <div className="flex gap-2 mt-4 md:mt-0">
-      {["all", "Confirmed","Completed" ,"Cancelled"].map((type) => (
+      {["all", "Confirmed", "Completed", "Cancelled", "Cancellation Requested"].map((type) => (
         <button
           key={type}
           onClick={() => setFilter(type)}
@@ -190,7 +191,8 @@ const Reservations = () => {
             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
         >
-          <Filter size={14} /> {type.charAt(0).toUpperCase() + type.slice(1)}
+          <Filter size={14} /> {type === "Cancellation Requested" ? "Cancellation Requests" : type.charAt(0).toUpperCase() + type.slice(1)}
+
         </button>
       ))}
     </div>
@@ -218,7 +220,7 @@ const Reservations = () => {
               <span
                 className={`text-sm font-medium px-3 py-1 rounded-full mt-2 md:mt-0 ${reservation.status === "Confirmed"
                   ? "bg-green-100 text-green-700"
-                  : reservation.status === "pending"
+                  : reservation.status === "Cancellation Requested"
                     ? "bg-yellow-100 text-yellow-700"
                     : reservation.status === "Completed" 
                     ? "bg-blue-100 text-blue-700"
@@ -348,22 +350,136 @@ const Reservations = () => {
               </p>
 
               {/* Hide edit/cancel buttons if cancelled */}
-              {selectedReservation.status !== "Cancelled" && (
-                <div className="flex justify-between mt-6">
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 bg-olive-dark text-white px-4 py-2 rounded-xl text-sm hover:bg-olive-dark/90"
-                  >
-                    <Edit size={16} /> Edit
-                  </button>
-                  <button
-                    onClick={cancelReservation}
-                    className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl text-sm hover:bg-red-600"
-                  >
-                    <Trash size={16} /> Cancel
-                  </button>
-                </div>
-              )}
+              {/* 🔹 Host actions depending on status */}
+{selectedReservation.status === "Cancellation Requested" ? (
+  <div className="flex justify-between mt-6">
+    <button
+      onClick={async () => {
+        try {
+          const resRef = doc(db, "reservations", selectedReservation.id);
+          await updateDoc(resRef, { status: "Cancelled" });
+
+          let guestData = null;
+          const guestRef = doc(db, "users", selectedReservation.guestId);
+          const guestSnap = await getDoc(guestRef);
+          if(guestSnap.exists()){
+            guestData = guestSnap.data();
+          }
+
+          let listingData = null;
+          if (selectedReservation.listingId) {
+            const listingRef = doc(db, "listings", selectedReservation.listingId);
+            const listingSnap = await getDoc(listingRef);
+            if (listingSnap.exists()) {
+              listingData = listingSnap.data();
+            }
+          }
+
+          let hostData = null;
+          const hostRef = doc(db, "users", selectedReservation.hostId);
+          const hostSnap = await getDoc(hostRef);
+          if(hostSnap.exists()){
+            hostData = hostSnap.data();
+          }
+          console.log("Guest Name:", guestData.name || guestData.fullName);
+          console.log("Listing Name:", listingData.title);
+          console.log("Host Name:", hostData.fullName || hostData.name);
+
+          console.log("listingData Cat:", listingData.superCategory);
+          
+          // 🔹 Send email notification
+          if (listingData.superCategory === "Homes") {
+        await axios.post(
+          "https://custom-email-backend.onrender.com/send-cancellation-email",
+          {
+            guestEmail: guestData.email,
+            guestName: guestData.name || guestData.fullName,
+            listingTitle: listingData.title,
+            hostName: hostData.fullName || hostData.name || "Host",
+            checkIn: selectedReservation.checkIn,
+            checkOut: selectedReservation.checkOut,
+            totalAmount: selectedReservation.totalAmount,
+            reservationId: selectedReservation.id,
+          },
+          { headers: { "Content-Type": "application/json" } }
+        );
+      } else if (listingData.superCategory === "Experiences") {
+        await axios.post(
+          "https://custom-email-backend.onrender.com/send-cancellation-email-experiences",
+          {
+            guestEmail: guestData.email,
+            guestName: guestData.name || guestData.fullName,
+            listingTitle: listingData.title,
+            hostName: hostData.fullName || hostData.name || "Host",
+            bookedDate: selectedReservation.checkIn,
+            totalAmount: selectedReservation.totalAmount,
+            reservationId: selectedReservation.id,
+          },
+          { headers: { "Content-Type": "application/json" } }
+        );
+      } else if (listingData.superCategory === "Services") {
+        await axios.post(
+          "https://custom-email-backend.onrender.com/send-cancellation-email-services",
+          {
+            guestEmail: guestData.email,
+            guestName: guestData.name || guestData.fullName,
+            listingTitle: listingData.title,
+            hostName: hostData.fullName || hostData.name || "Host",
+            bookedDate: selectedReservation.checkIn || selectedReservation.bookedDate,
+            totalAmount: selectedReservation.totalAmount,
+            reservationId: selectedReservation.id,
+          },
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      alert("Cancellation approved and guest notified.");
+      
+      closeModal();
+        } catch (error) {
+          console.error("Error approving cancellation:", error);
+          alert("Failed to approve cancellation.");
+        }
+      }}
+      className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm hover:bg-green-700"
+    >
+      Approve Request
+    </button>
+
+    <button
+      onClick={async () => {
+        try {
+          const resRef = doc(db, "reservations", selectedReservation.id);
+          await updateDoc(resRef, { status: "Confirmed" });
+          alert("Cancellation request declined.");
+          closeModal();
+        } catch (error) {
+          console.error("Error declining cancellation:", error);
+          alert("Failed to decline request.");
+        }
+      }}
+      className="bg-red-500 text-white px-4 py-2 rounded-xl text-sm hover:bg-red-600"
+    >
+      Decline Request
+    </button>
+  </div>
+) : selectedReservation.status !== "Cancelled" ? (
+  <div className="flex justify-between mt-6">
+    <button
+      onClick={() => setIsEditing(true)}
+      className="flex items-center gap-2 bg-olive-dark text-white px-4 py-2 rounded-xl text-sm hover:bg-olive-dark/90"
+    >
+      <Edit size={16} /> Edit
+    </button>
+    <button
+      onClick={cancelReservation}
+      className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl text-sm hover:bg-red-600"
+    >
+      <Trash size={16} /> Cancel
+    </button>
+  </div>
+) : null}
+
             </div>
           ) : (
             <div className="text-gray-700 space-y-3">

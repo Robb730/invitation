@@ -14,7 +14,23 @@ import {
 import { db, auth } from "../../firebaseConfig";
 import Navbar from "./homepage-comp/Navbar";
 import Footer from "./homepage-comp/Footer";
-import { ChevronLeft, ChevronRight, X, Calendar, Tag } from "lucide-react";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  X, 
+  Calendar, 
+  Tag,
+  Users,
+  Bed,
+  Bath,
+  MapPin,
+  Star,
+  Heart,
+  Share2,
+  MessageCircle,
+  Send,
+  Check
+} from "lucide-react";
 import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
@@ -22,14 +38,12 @@ import { format, differenceInDays } from "date-fns";
 import { PayPalButtons } from "@paypal/react-paypal-js";
 import axios from "axios";
 import { onAuthStateChanged } from "firebase/auth";
-import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
 import { isFavorite, toggleFavorite } from "../../utils/favorites";
-import { FiShare2 } from "react-icons/fi";
 import { serverTimestamp, onSnapshot, orderBy } from "firebase/firestore";
 
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
-import markerIcon from "./hostpage-comp/images/marker_olive.png"; // you can replace this with your own image
+import markerIcon from "./hostpage-comp/images/marker_olive.png";
 import { updateHostPoints } from "../../utils/pointSystem";
 
 const customMarker = L.icon({
@@ -51,21 +65,25 @@ const ListingDetails = () => {
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [user, setUser] = useState("");
-
   const [favorite, setFavorite] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-
   const [showChat, setShowChat] = useState(false);
   const [messageText, setMessageText] = useState("");
-
   const [messages, setMessages] = useState([]);
-
   const [ratings, setRatings] = useState([]);
   const [averageRating, setAverageRating] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
 
-  // 🔹 Fetch ratings for this listing
-  // 🔹 Fetch ratings for this listing
-  // 🔹 Fetch ratings for this listing
+  const [bookedDates, setBookedDates] = useState([]);
+  const [dateRange, setDateRange] = useState([
+    {
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 86400000),
+      key: "selection",
+    },
+  ]);
+
+  // Fetch ratings
   useEffect(() => {
     const fetchRatings = async () => {
       try {
@@ -74,12 +92,10 @@ const ListingDetails = () => {
         const snapshot = await getDocs(q);
         const allRatings = snapshot.docs.map((doc) => doc.data());
 
-        // Separate ratings with comments
         const ratingsWithComments = allRatings.filter(
           (r) => r.comment && r.comment.trim() !== ""
         );
 
-        // Compute the average star rating
         const avg =
           allRatings.length > 0
             ? allRatings.reduce((sum, r) => sum + (r.rating || 0), 0) /
@@ -98,6 +114,7 @@ const ListingDetails = () => {
     fetchRatings();
   }, [id]);
 
+  // Chat listener
   useEffect(() => {
     if (!user || !listing) return;
 
@@ -114,26 +131,15 @@ const ListingDetails = () => {
     return () => unsubscribe();
   }, [user, listing, id]);
 
-  const [bookedDates, setBookedDates] = useState([]);
-  const [dateRange, setDateRange] = useState([
-    {
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 86400000),
-      key: "selection",
-    },
-  ]);
-
   const handleSendMessage = async () => {
     if (!messageText.trim()) return;
 
     try {
       const chatId = `${user.id}_${listing.hostId}_${id}`;
-
       const chatRef = doc(db, "chats", chatId);
       const chatSnap = await getDoc(chatRef);
 
       if (!chatSnap.exists()) {
-        // create new chat document
         await setDoc(chatRef, {
           participants: [user.id, listing.hostId],
           listingId: id,
@@ -141,14 +147,12 @@ const ListingDetails = () => {
           updatedAt: serverTimestamp(),
         });
       } else {
-        // update existing chat's last message and timestamp
         await updateDoc(chatRef, {
           lastMessage: messageText,
           updatedAt: serverTimestamp(),
         });
       }
 
-      // add message to subcollection
       await addDoc(collection(chatRef, "messages"), {
         senderId: user.id,
         text: messageText,
@@ -162,20 +166,19 @@ const ListingDetails = () => {
     }
   };
 
-  // Get current page URL for sharing
   const currentURL = window.location.href;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(currentURL);
-    alert("Link copied to clipboard!");
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
   };
-  // 2️⃣ Function to get earliest available date
+
   const getEarliestAvailableDate = useCallback(() => {
     const today = new Date();
     let start = new Date(today);
     start.setDate(start.getDate() + 1);
 
-    // Skip booked dates
     while (
       bookedDates.some(
         (d) => start.toDateString() === new Date(d).toDateString()
@@ -191,12 +194,10 @@ const ListingDetails = () => {
 
   useEffect(() => {
     if (!bookedDates || bookedDates.length === 0) return;
-
     const { startDate, endDate } = getEarliestAvailableDate();
     setDateRange([{ startDate, endDate, key: "selection" }]);
   }, [bookedDates, getEarliestAvailableDate]);
 
-  // 4️⃣ Check if a date is booked (used in dayContentRenderer)
   const isDateBooked = useCallback(
     (date) =>
       bookedDates.some(
@@ -204,8 +205,6 @@ const ListingDetails = () => {
       ),
     [bookedDates]
   );
-
-  //check if listing is already your favorite
 
   useEffect(() => {
     const checkFavoriteStatus = async () => {
@@ -217,7 +216,7 @@ const ListingDetails = () => {
     checkFavoriteStatus();
   }, [user, id]);
 
-  // 🔹 Fetch listing info
+  // Fetch listing
   useEffect(() => {
     const fetchListing = async () => {
       try {
@@ -231,15 +230,7 @@ const ListingDetails = () => {
     fetchListing();
   }, [id]);
 
-  useEffect(() => {
-    const checkFav = async () => {
-      const fav = await isFavorite(id);
-      setFavorite(fav);
-    };
-    checkFav();
-  }, [id]);
-
-  // 🔹 Fetch host info
+  // Fetch host info
   useEffect(() => {
     const fetchHostInfo = async () => {
       if (!listing?.hostId) return;
@@ -258,7 +249,7 @@ const ListingDetails = () => {
     fetchHostInfo();
   }, [listing]);
 
-  // 🔹 Fetch booked dates
+  // Fetch booked dates
   useEffect(() => {
     const fetchBookedDates = async () => {
       try {
@@ -287,7 +278,7 @@ const ListingDetails = () => {
     fetchBookedDates();
   }, [id]);
 
-  // 🔹 Get logged in user info
+  // Get user
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -320,23 +311,17 @@ const ListingDetails = () => {
   const images = Array.isArray(listing.images)
     ? listing.images
     : [listing.images];
-  const listingDetails = `${listing.guests} guest/s • ${listing.bedrooms} bedroom/s • ${listing.bathrooms} bath/s`;
 
   const handlePrev = (e) => {
     e.stopPropagation();
     setSelectedIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
+  
   const handleNext = (e) => {
     e.stopPropagation();
     setSelectedIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
-  // const isDateBooked = (date) =>
-  //   bookedDates.some(
-  //     (bookedDate) => date.toDateString() === new Date(bookedDate).toDateString()
-  //   );
-
-  // 🔹 Reservation summary trigger
   const handleReserveClick = () => {
     const { startDate, endDate } = dateRange[0];
     if (!auth.currentUser) {
@@ -354,13 +339,12 @@ const ListingDetails = () => {
     setShowSummary(true);
   };
 
-  // 🔹 Apply promo code
   const handleApplyPromo = () => {
     if (
       listing.promoCode &&
       listing.promoCode.toLowerCase() === promoCode.toLowerCase()
     ) {
-      setDiscount(listing.discountPercent || 10); // e.g., 10% off if not specified
+      setDiscount(listing.discountPercent || 10);
       alert(`Promo code applied! ${listing.discountPercent || 10}% discount`);
     } else {
       setDiscount(0);
@@ -380,8 +364,8 @@ const ListingDetails = () => {
     }
 
     try {
-      const newState = await toggleFavorite(id); // toggles in Firestore
-      setFavorite(newState); // update local state
+      const newState = await toggleFavorite(id);
+      setFavorite(newState);
 
       if (newState) {
         alert("Added to favorites!");
@@ -398,194 +382,233 @@ const ListingDetails = () => {
     <div className="bg-beige min-h-screen">
       <Navbar />
 
-      {/* Image Viewer */}
+      {/* Image Viewer Modal - Enhanced */}
       {selectedIndex !== null && (
         <div
-          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 animate-[fadeIn_0.2s_ease-out]"
           onClick={() => setSelectedIndex(null)}
         >
           <button
             onClick={() => setSelectedIndex(null)}
-            className="absolute top-6 right-8 text-white text-3xl hover:opacity-80 transition"
+            className="absolute top-4 right-4 md:top-6 md:right-8 text-white hover:bg-white/10 p-2 rounded-full transition-all duration-200"
           >
-            <X size={32} />
+            <X size={28} />
           </button>
           <button
             onClick={handlePrev}
-            className="absolute left-5 text-white hover:opacity-80"
+            className="absolute left-2 md:left-5 text-white hover:bg-white/10 p-3 rounded-full transition-all duration-200"
           >
-            <ChevronLeft size={50} />
+            <ChevronLeft size={32} className="md:w-12 md:h-12" />
           </button>
           <button
             onClick={handleNext}
-            className="absolute right-5 text-white hover:opacity-80"
+            className="absolute right-2 md:right-5 text-white hover:bg-white/10 p-3 rounded-full transition-all duration-200"
           >
-            <ChevronRight size={50} />
+            <ChevronRight size={32} className="md:w-12 md:h-12" />
           </button>
           <img
             src={images[selectedIndex]}
             alt="Full view"
-            className="max-h-[90vh] object-contain rounded-lg"
+            className="max-h-[90vh] max-w-[95vw] object-contain rounded-lg animate-[scaleIn_0.3s_ease-out]"
           />
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-full text-sm">
+            {selectedIndex + 1} / {images.length}
+          </div>
         </div>
       )}
 
       {/* Main Content */}
-      <div className="px-10 lg:px-20 pt-28 pb-20 space-y-10">
-        <div className="space-y-1 animate-[fade-in_0.6s_ease-out]">
-          <h1 className="text-4xl sm:text-5xl font-semibold text-olive-darker leading-tight tracking-tight">
+      <div className="px-4 sm:px-6 lg:px-20 pt-24 md:pt-28 pb-12 md:pb-20 space-y-6 md:space-y-10">
+        {/* Header */}
+        <div className="space-y-2 animate-[slideUp_0.6s_ease-out]">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-olive-darker leading-tight">
             {listing.title}
           </h1>
-          <p className="text-lg text-grayish italic flex items-center gap-1">
-            <span className="text-olive-dark text-xl"></span> {listing.location}
-          </p>
+          <div className="flex items-center gap-2 text-gray-600">
+            <MapPin size={18} className="text-olive-dark flex-shrink-0" />
+            <p className="text-base sm:text-lg">{listing.location}</p>
+          </div>
         </div>
 
-        {/* Image grid */}
-        {/* 1 IMAGE */}
-        {images.length === 1 && (
-          <div
-            className="overflow-hidden rounded-2xl cursor-pointer"
-            onClick={() => setSelectedIndex(0)}
-          >
-            <img
-              src={images[0]}
-              alt=""
-              className="w-full h-[500px] object-cover hover:scale-105 transition-transform duration-500"
-            />
-          </div>
-        )}
-        {/* 2 IMAGES */}
-        {images.length === 2 && (
-          <div className="grid grid-cols-2 gap-3">
-            {images.map((img, i) => (
-              <div
-                key={i}
-                className="overflow-hidden rounded-2xl cursor-pointer"
-                onClick={() => setSelectedIndex(i)}
-              >
-                <img
-                  src={img}
-                  alt=""
-                  className="w-full h-[400px] object-cover hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 3 IMAGES */}
-        {images.length === 3 && (
-          <div className="grid grid-cols-3 gap-3">
+        {/* Image Grid - Responsive */}
+        <div className="animate-[fadeIn_0.8s_ease-out]">
+          {images.length === 1 && (
             <div
-              className="col-span-2 overflow-hidden rounded-2xl cursor-pointer"
+              className="overflow-hidden rounded-xl md:rounded-2xl cursor-pointer"
               onClick={() => setSelectedIndex(0)}
             >
               <img
                 src={images[0]}
                 alt=""
-                className="w-full h-[400px] object-cover hover:scale-105 transition-transform duration-500"
+                className="w-full h-64 sm:h-96 md:h-[500px] object-cover hover:scale-105 transition-transform duration-500"
               />
             </div>
-            <div className="grid grid-rows-2 gap-3">
-              {images.slice(1).map((img, i) => (
+          )}
+
+          {images.length === 2 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
+              {images.map((img, i) => (
                 <div
-                  key={i + 1}
-                  className="overflow-hidden rounded-2xl cursor-pointer"
-                  onClick={() => setSelectedIndex(i + 1)}
+                  key={i}
+                  className="overflow-hidden rounded-xl md:rounded-2xl cursor-pointer"
+                  onClick={() => setSelectedIndex(i)}
                 >
                   <img
                     src={img}
                     alt=""
-                    className="w-full h-[195px] object-cover hover:scale-105 transition-transform duration-500"
+                    className="w-full h-56 sm:h-72 md:h-[400px] object-cover hover:scale-105 transition-transform duration-500"
                   />
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {images.length >= 4 && (
-          <div className="grid grid-cols-3 gap-3">
-            <div
-              className="overflow-hidden rounded-2xl cursor-pointer"
-              onClick={() => setSelectedIndex(0)}
-            >
-              <img
-                src={images[0]}
-                alt=""
-                className="w-full h-[360px] object-cover hover:scale-105 transition"
-              />
-            </div>
-            <div className="grid grid-rows-2 gap-3">
-              {images.slice(1, 3).map((img, i) => (
+          {images.length === 3 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
+              <div
+                className="sm:col-span-2 overflow-hidden rounded-xl md:rounded-2xl cursor-pointer"
+                onClick={() => setSelectedIndex(0)}
+              >
                 <img
-                  key={i}
-                  src={img}
+                  src={images[0]}
                   alt=""
-                  onClick={() => setSelectedIndex(i + 1)}
-                  className="w-full h-[175px] object-cover rounded-2xl cursor-pointer hover:scale-105 transition"
+                  className="w-full h-56 sm:h-72 md:h-[400px] object-cover hover:scale-105 transition-transform duration-500"
                 />
-              ))}
+              </div>
+              <div className="grid grid-rows-2 gap-2 md:gap-3">
+                {images.slice(1).map((img, i) => (
+                  <div
+                    key={i + 1}
+                    className="overflow-hidden rounded-xl md:rounded-2xl cursor-pointer"
+                    onClick={() => setSelectedIndex(i + 1)}
+                  >
+                    <img
+                      src={img}
+                      alt=""
+                      className="w-full h-28 sm:h-36 md:h-[195px] object-cover hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-            <div
-              className="overflow-hidden rounded-2xl cursor-pointer"
-              onClick={() => setSelectedIndex(3)}
-            >
-              <img
-                src={images[3]}
-                alt=""
-                className="w-full h-[360px] object-cover hover:scale-105 transition"
-              />
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Two-column layout */}
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-10 mt-10">
-          <div className="lg:col-span-2 bg-white rounded-2xl p-8 shadow-sm">
-            <h3 className="text-2xl font-semibold text-olive-dark mb-3 flex items-center gap-2">
-              About this place
-              {averageRating > 0 && (
-                <span className="text-yellow-500 flex items-center gap-1 text-lg font-medium">
-                  ★ {averageRating.toFixed(1)}
-                  <span className="text-gray-500 text-sm">
-                    ({ratings.all?.length || 0}{" "}
-                    {ratings.all?.length === 1 ? "review" : "reviews"})
+          {images.length >= 4 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
+              <div
+                className="overflow-hidden rounded-xl md:rounded-2xl cursor-pointer"
+                onClick={() => setSelectedIndex(0)}
+              >
+                <img
+                  src={images[0]}
+                  alt=""
+                  className="w-full h-56 sm:h-72 lg:h-[360px] object-cover hover:scale-105 transition"
+                />
+              </div>
+              <div className="grid grid-rows-2 gap-2 md:gap-3">
+                {images.slice(1, 3).map((img, i) => (
+                  <img
+                    key={i}
+                    src={img}
+                    alt=""
+                    onClick={() => setSelectedIndex(i + 1)}
+                    className="w-full h-28 sm:h-36 lg:h-[175px] object-cover rounded-xl md:rounded-2xl cursor-pointer hover:scale-105 transition"
+                  />
+                ))}
+              </div>
+              <div
+                className="overflow-hidden rounded-xl md:rounded-2xl cursor-pointer hidden lg:block"
+                onClick={() => setSelectedIndex(3)}
+              >
+                <img
+                  src={images[3]}
+                  alt=""
+                  className="w-full h-[360px] object-cover hover:scale-105 transition"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Two-column layout - Responsive */}
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10">
+          {/* Left Column */}
+          <div className="lg:col-span-2 bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-md border border-gray-100">
+            {/* About Section */}
+            <div className="mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                <h3 className="text-2xl md:text-3xl font-bold text-olive-dark">
+                  About this place
+                </h3>
+                {averageRating > 0 && (
+                  <span className="bg-yellow-50 text-yellow-600 px-3 py-1.5 rounded-full flex items-center gap-1.5 text-sm font-medium shadow-sm border border-yellow-100 w-fit">
+                    <Star size={16} fill="currentColor" />
+                    {averageRating.toFixed(1)}
+                    <span className="text-gray-500 text-xs">
+                      ({ratings.all?.length || 0})
+                    </span>
                   </span>
-                </span>
-              )}
-            </h3>
+                )}
+              </div>
 
-            <p className="text-gray-800 leading-relaxed">{listingDetails}</p>
-            <div className="mt-6 border-t pt-5 text-gray-600">
-              {listing.description}
+              {/* Property Details - Mobile Optimized */}
+              <div className="flex flex-wrap gap-3 mb-6">
+                <div className="flex items-center gap-2 bg-gradient-to-br from-olive-light/20 to-olive-light/10 rounded-xl px-4 py-2.5 border border-olive-light/30 shadow-sm">
+                  <Users size={18} className="text-olive-dark" />
+                  <span className="text-sm md:text-base font-medium text-gray-800">
+                    {listing.guests} guest{listing.guests > 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 bg-gradient-to-br from-olive-light/20 to-olive-light/10 rounded-xl px-4 py-2.5 border border-olive-light/30 shadow-sm">
+                  <Bed size={18} className="text-olive-dark" />
+                  <span className="text-sm md:text-base font-medium text-gray-800">
+                    {listing.bedrooms} bedroom{listing.bedrooms > 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 bg-gradient-to-br from-olive-light/20 to-olive-light/10 rounded-xl px-4 py-2.5 border border-olive-light/30 shadow-sm">
+                  <Bath size={18} className="text-olive-dark" />
+                  <span className="text-sm md:text-base font-medium text-gray-800">
+                    {listing.bathrooms} bath{listing.bathrooms > 1 ? "s" : ""}
+                  </span>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="bg-gray-50 border border-gray-100 rounded-xl md:rounded-2xl p-4 md:p-5 shadow-inner">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line text-sm md:text-base">
+                  {listing.description}
+                </p>
+              </div>
             </div>
 
-            {/* 📍 Map Section */}
+            {/* Map Section - Mobile Optimized */}
             {listing.latitude && listing.longitude && (
               <div className="mt-10">
-                <h3 className="text-2xl font-semibold text-olive-dark mb-3">
+                <h3 className="text-xl md:text-2xl font-semibold text-olive-dark mb-4 flex items-center gap-2">
+                  <MapPin size={20} className="text-olive-dark" />
                   Location
                 </h3>
-                <div className="rounded-2xl overflow-hidden border shadow-md">
+                <div className="rounded-2xl md:rounded-3xl overflow-hidden border border-gray-200 shadow-lg">
                   <MapContainer
                     center={[listing.latitude, listing.longitude]}
                     zoom={14}
                     scrollWheelZoom={false}
-                    style={{ height: "400px", width: "100%", zIndex: 0 }}
+                    style={{ height: "300px", width: "100%", zIndex: 0 }}
+                    className="md:h-[400px]"
                   >
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution="&copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors"
+                      attribution="&copy; OpenStreetMap contributors"
                     />
                     <Marker
                       position={[listing.latitude, listing.longitude]}
                       icon={customMarker}
                     >
                       <Popup>
-                        <div className="text-center">
-                          <h4 className="font-semibold text-olive-dark mb-2">
+                        <div className="text-center p-2">
+                          <h4 className="font-semibold text-olive-dark mb-2 text-sm">
                             {listing.title}
                           </h4>
                           <button
@@ -595,9 +618,9 @@ const ListingDetails = () => {
                                 "_blank"
                               )
                             }
-                            className="bg-olive-dark text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition"
+                            className="bg-olive-dark text-white px-3 py-1.5 rounded-lg hover:bg-olive-dark/90 transition font-medium text-xs"
                           >
-                            Locate
+                            Open in Google Maps
                           </button>
                         </div>
                       </Popup>
@@ -606,76 +629,88 @@ const ListingDetails = () => {
                 </div>
               </div>
             )}
-            {/* ⭐ Ratings & Reviews Section */}
-            {ratings.all?.length > 0 && (
-              <div className="mt-10">
-                <h3 className="text-2xl font-semibold text-olive-dark mb-4 flex items-center gap-2">
-                  <span>Ratings & Reviews</span>
-                  <span className="text-yellow-500 flex items-center gap-1 text-lg font-medium">
-                    ★ {averageRating.toFixed(1)}
-                    <span className="text-gray-500 text-sm">
-                      ({ratings.all.length}{" "}
-                      {ratings.all.length === 1 ? "review" : "reviews"})
-                    </span>
-                  </span>
-                </h3>
 
-                {/* Only show comment section if there are comments */}
+            {/* Ratings Section - Mobile Optimized */}
+            {ratings.all?.length > 0 && (
+              <div className="mt-10 md:mt-14">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                  <h3 className="text-2xl md:text-3xl font-bold text-olive-dark flex items-center gap-3">
+                    <Star size={24} className="text-yellow-500" fill="currentColor" />
+                    Reviews
+                  </h3>
+                  <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-100 px-4 py-1.5 rounded-full text-yellow-600 font-medium shadow-sm w-fit">
+                    {averageRating.toFixed(1)} ★
+                    <span className="text-gray-500 text-sm">
+                      ({ratings.all.length})
+                    </span>
+                  </div>
+                </div>
+
                 {ratings.withComments.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="grid gap-4 md:gap-5">
                     {ratings.withComments.map((r, i) => (
                       <div
                         key={i}
-                        className="border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition bg-white"
+                        className="bg-white border border-gray-100 rounded-xl md:rounded-2xl p-4 md:p-5 shadow-sm hover:shadow-lg transition-all duration-200 animate-[slideUp_0.4s_ease-out]"
+                        style={{ animationDelay: `${i * 0.1}s` }}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-800">
-                              {r.guestName || "Guest"}
-                            </span>
-                            <span className="flex text-yellow-400">
-                              {"★".repeat(r.rating)}{" "}
-                              <span className="text-gray-300">
-                                {"★".repeat(5 - r.rating)}
-                              </span>
-                            </span>
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-olive-light/30 text-olive-dark font-semibold w-10 h-10 rounded-full flex items-center justify-center uppercase flex-shrink-0">
+                              {r.guestName?.charAt(0) || "G"}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-800 text-sm md:text-base">
+                                {r.guestName || "Guest"}
+                              </p>
+                              <div className="flex text-yellow-400 text-sm">
+                                {"★".repeat(r.rating)}
+                                <span className="text-gray-300">
+                                  {"★".repeat(5 - r.rating)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <span className="text-sm text-gray-500">
+                          <span className="text-xs md:text-sm text-gray-500 font-medium whitespace-nowrap">
                             {r.createdAt?.toDate
                               ? r.createdAt.toDate().toLocaleDateString()
                               : new Date(r.createdAt).toLocaleDateString()}
                           </span>
                         </div>
 
-                        <p className="text-gray-700 mt-2 italic leading-relaxed">
-                          “{r.comment}”
+                        <p className="text-gray-700 text-sm md:text-base italic leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
+                          "{r.comment}"
                         </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 italic">
-                    There are no written reviews yet, but this listing has{" "}
-                    {ratings.all.length} rating
-                    {ratings.all.length > 1 ? "s" : ""}.
+                  <p className="text-gray-500 italic bg-gray-50 border border-gray-100 rounded-xl p-4 text-center text-sm md:text-base">
+                    No written reviews yet — but this listing has{" "}
+                    <span className="font-semibold text-olive-dark">
+                      {ratings.all.length}
+                    </span>{" "}
+                    rating{ratings.all.length > 1 ? "s" : ""}.
                   </p>
                 )}
               </div>
             )}
           </div>
 
-          {/* Reservation box */}
-          <div className="space-y-5">
-            {/* 🧑‍💼 Host Info */}
-            <div className="bg-white border rounded-2xl p-5 shadow-md flex items-center gap-4">
+          {/* Right Column - Sticky on Desktop */}
+          <div className="space-y-4 md:space-y-5 lg:sticky lg:top-24 lg:self-start">
+            {/* Host Info */}
+            <div className="bg-white border rounded-xl md:rounded-2xl p-4 md:p-5 shadow-md flex items-center gap-4">
               <img
                 src={hostPic}
                 alt={hostName}
-                className="w-14 h-14 rounded-full object-cover"
+                className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover ring-2 ring-olive"
               />
               <div>
-                <h4 className="font-semibold text-olive-dark">{hostName}</h4>
-                <p className="text-gray-500 text-sm">Host</p>
+                <h4 className="font-semibold text-olive-dark text-sm md:text-base">
+                  {hostName}
+                </h4>
+                <p className="text-gray-500 text-xs md:text-sm">Host</p>
               </div>
             </div>
 
@@ -683,123 +718,155 @@ const ListingDetails = () => {
             {user && user.id !== listing.hostId && (
               <button
                 onClick={() => setShowChat(true)}
-                className="mt-3 w-full bg-olive-dark text-white py-2 rounded-lg hover:opacity-90 transition"
+                className="w-full bg-gradient-to-r from-olive-dark to-olive-darker text-white py-3 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-medium"
               >
+                <MessageCircle size={18} />
                 Message Host
               </button>
             )}
 
-            {/* 💳 Reservation Box */}
-            <div className="bg-white border rounded-2xl p-6 shadow-md space-y-5">
-              {/* Price and Buttons Row */}
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">
-                  ₱{listing.price}
+            {/* Reservation Box */}
+            <div className="bg-white border rounded-xl md:rounded-2xl p-5 md:p-6 shadow-md space-y-4">
+              {/* Price and Action Buttons */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <h2 className="text-xl md:text-2xl font-bold text-olive-dark">
+                  ₱{listing.price.toLocaleString()}
                   <span className="text-gray-600 text-sm font-normal">
                     {" "}
                     / night
                   </span>
                 </h2>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   {/* Favorite Button */}
                   <button
                     onClick={handleFavoriteToggle}
-                    className="p-2 rounded-full border transition"
+                    className="p-2.5 rounded-full border border-gray-200 hover:border-olive-dark hover:bg-olive-light/10 transition-all duration-200 group"
+                    title={favorite ? "Remove from favorites" : "Add to favorites"}
                   >
-                    {favorite ? (
-                      <AiFillHeart className="text-olive text-xl" />
-                    ) : (
-                      <AiOutlineHeart className="text-gray-500 text-xl" />
-                    )}
+                    <Heart
+                      size={20}
+                      className={`transition-all duration-200 ${
+                        favorite
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-500 group-hover:text-olive-dark"
+                      }`}
+                    />
                   </button>
 
                   {/* Share Button */}
                   <button
                     onClick={() => setShowShareModal(true)}
-                    className="p-2 rounded-full border transition hover:bg-gray-100"
+                    className="p-2.5 rounded-full border border-gray-200 hover:border-olive-dark hover:bg-olive-light/10 transition-all duration-200 group"
                     title="Share Listing"
                   >
-                    <FiShare2 className="text-gray-600 text-xl" />
-                  </button>
-
-                  {/* Reserve Button */}
-                  <button
-                    onClick={handleReserveClick}
-                    className="bg-olive-dark text-white font-semibold py-2 px-5 rounded-lg hover:opacity-90 transition"
-                  >
-                    Reserve
+                    <Share2 size={20} className="text-gray-500 group-hover:text-olive-dark transition-colors" />
                   </button>
                 </div>
               </div>
 
+              {/* Reserve Button - Full Width on Mobile */}
+              <button
+                onClick={handleReserveClick}
+                className="w-full bg-gradient-to-r from-olive-dark to-olive-darker text-white font-semibold py-3 md:py-3.5 rounded-xl hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
+              >
+                Reserve Now
+              </button>
+
               {/* Guests Input */}
-              <div className="flex items-center justify-between border-t pt-3">
-                <label className="text-gray-700 font-medium">Guests:</label>
+              <div className="flex items-center justify-between border-t pt-4">
+                <label className="text-gray-700 font-medium flex items-center gap-2">
+                  <Users size={18} className="text-olive-dark" />
+                  Guests
+                </label>
                 <input
                   type="number"
                   min="1"
                   max={listing.guests}
                   value={guestCount}
                   onChange={(e) => setGuestCount(Number(e.target.value))}
-                  className="border rounded-lg px-3 py-1.5 w-24 text-center focus:ring-2 focus:ring-olive-dark outline-none"
+                  className="border border-gray-200 rounded-lg px-3 py-2 w-20 text-center focus:ring-2 focus:ring-olive-dark focus:border-transparent outline-none transition-all"
                 />
               </div>
 
               {/* Calendar Button */}
-              <div className="border-t pt-3 text-center">
+              <div className="border-t pt-4">
                 <button
                   onClick={() => setShowCalendar(true)}
-                  className="flex items-center justify-center gap-2 mx-auto bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
+                  className="flex items-center justify-between w-full bg-gray-50 hover:bg-gray-100 px-4 py-3 rounded-xl transition-all duration-200 border border-gray-200"
                 >
-                  <Calendar size={18} />
-                  <span>
-                    {format(dateRange[0].startDate, "MMM dd")} -{" "}
-                    {format(dateRange[0].endDate, "MMM dd, yyyy")}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Calendar size={18} className="text-olive-dark" />
+                    <span className="text-sm md:text-base font-medium text-gray-700">
+                      {format(dateRange[0].startDate, "MMM dd")} -{" "}
+                      {format(dateRange[0].endDate, "MMM dd, yyyy")}
+                    </span>
+                  </div>
+                  <ChevronRight size={18} className="text-gray-400" />
                 </button>
               </div>
             </div>
           </div>
-          {showShareModal && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-sm relative">
-                <button
-                  onClick={() => setShowShareModal(false)}
-                  className="absolute top-3 right-3 text-gray-500 hover:text-black"
-                >
-                  <X size={22} />
-                </button>
-                <h3 className="text-xl font-bold text-olive-dark mb-4 text-center">
+        </div>
+
+        {/* Share Modal - Enhanced Animation */}
+        {showShareModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4 animate-[fadeIn_0.2s_ease-out]">
+            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-md relative animate-[slideUp_0.3s_ease-out]">
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-all"
+              >
+                <X size={20} />
+              </button>
+              
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-olive-light/20 p-3 rounded-full">
+                  <Share2 size={24} className="text-olive-dark" />
+                </div>
+                <h3 className="text-xl md:text-2xl font-bold text-olive-dark">
                   Share this listing
                 </h3>
+              </div>
 
-                <div className="space-y-4">
-                  {/* Copy link */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={currentURL}
-                      readOnly
-                      className="flex-1 border px-3 py-2 rounded-lg"
-                    />
-                    <button
-                      onClick={handleCopyLink}
-                      className="bg-olive-dark text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
-                    >
-                      Copy
-                    </button>
-                  </div>
+              <div className="space-y-4">
+                {/* Copy Link */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={currentURL}
+                    readOnly
+                    className="flex-1 border border-gray-200 px-4 py-3 rounded-xl text-sm bg-gray-50 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleCopyLink}
+                    className="bg-olive-dark text-white px-4 py-3 rounded-xl hover:bg-olive-darker transition-all duration-200 flex items-center gap-2 whitespace-nowrap font-medium"
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check size={18} />
+                        <span className="hidden sm:inline">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 size={18} />
+                        <span className="hidden sm:inline">Copy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
 
-                  {/* Social links */}
-                  <div className="flex justify-center gap-4">
+                {/* Social Sharing */}
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-gray-600 mb-3">Share on social media</p>
+                  <div className="flex gap-3">
                     <a
                       href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
                         currentURL
                       )}&quote=${encodeURIComponent(listing.title)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+                      className="flex-1 bg-[#1877F2] text-white px-4 py-3 rounded-xl hover:opacity-90 transition-all duration-200 text-center font-medium text-sm"
                     >
                       Facebook
                     </a>
@@ -809,7 +876,7 @@ const ListingDetails = () => {
                       )}&text=${encodeURIComponent(listing.title)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-blue-400 text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+                      className="flex-1 bg-[#1DA1F2] text-white px-4 py-3 rounded-xl hover:opacity-90 transition-all duration-200 text-center font-medium text-sm"
                     >
                       Twitter
                     </a>
@@ -817,317 +884,423 @@ const ListingDetails = () => {
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {showChat && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-white w-[90%] max-w-md rounded-2xl p-6 relative shadow-xl">
+        {/* Chat Modal - Enhanced */}
+        {showChat && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4 animate-[fadeIn_0.2s_ease-out]">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl relative animate-[slideUp_0.3s_ease-out] flex flex-col max-h-[90vh]">
+              <div className="p-4 md:p-6 border-b flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-olive-light/20 p-2 rounded-full">
+                    <MessageCircle size={20} className="text-olive-dark" />
+                  </div>
+                  <h3 className="text-lg md:text-xl font-semibold text-olive-dark">
+                    Chat with {hostName}
+                  </h3>
+                </div>
                 <button
                   onClick={() => setShowChat(false)}
-                  className="absolute top-3 right-3 text-gray-500 hover:text-black"
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-all"
                 >
-                  <X size={22} />
+                  <X size={20} />
                 </button>
+              </div>
 
-                <h3 className="text-xl font-semibold text-olive-dark mb-4 text-center">
-                  Chat with {hostName}
-                </h3>
-
-                {/* Chat messages container */}
-                <div className="border rounded-lg p-3 h-64 overflow-y-auto mb-3 bg-gray-50">
-                  {messages.length === 0 ? (
-                    <p className="text-gray-500 text-sm text-center">
-                      Start your conversation with {hostName}...
+              {/* Messages Container */}
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 space-y-3 min-h-[300px] max-h-[50vh]">
+                {messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <div className="bg-olive-light/10 p-4 rounded-full mb-3">
+                      <MessageCircle size={32} className="text-olive-dark/40" />
+                    </div>
+                    <p className="text-gray-500 text-sm">
+                      Start your conversation with {hostName}
                     </p>
-                  ) : (
-                    messages.map((msg) => (
+                  </div>
+                ) : (
+                  messages.map((msg, idx) => (
+                    <div
+                      key={msg.id}
+                      className={`flex animate-[slideUp_0.3s_ease-out] ${
+                        msg.senderId === user.id ? "justify-end" : "justify-start"
+                      }`}
+                      style={{ animationDelay: `${idx * 0.05}s` }}
+                    >
                       <div
-                        key={msg.id}
-                        className={`mb-2 flex ${
+                        className={`px-4 py-2.5 rounded-2xl max-w-[75%] shadow-sm ${
                           msg.senderId === user.id
-                            ? "justify-end"
-                            : "justify-start"
+                            ? "bg-olive-dark text-white rounded-br-sm"
+                            : "bg-white text-gray-800 rounded-bl-sm border border-gray-100"
                         }`}
                       >
-                        <div
-                          className={`px-3 py-2 rounded-lg max-w-[70%] ${
-                            msg.senderId === user.id
-                              ? "bg-olive-dark text-white"
-                              : "bg-gray-200 text-gray-800"
-                          }`}
-                        >
-                          <p>{msg.text}</p>
-                        </div>
+                        <p className="text-sm md:text-base break-words">{msg.text}</p>
                       </div>
-                    ))
-                  )}
-                </div>
+                    </div>
+                  ))
+                )}
+              </div>
 
-                {/* Input box */}
+              {/* Input Area */}
+              <div className="p-4 md:p-6 border-t bg-white rounded-b-2xl">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Type a message..."
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
-                    className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-olive-dark outline-none"
+                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                    className="flex-1 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-olive-dark focus:border-transparent outline-none transition-all text-sm md:text-base"
                   />
                   <button
                     onClick={handleSendMessage}
-                    className="bg-olive-dark text-white px-4 py-2 rounded-lg hover:opacity-90"
+                    disabled={!messageText.trim()}
+                    className="bg-olive-dark text-white px-4 md:px-5 py-3 rounded-xl hover:bg-olive-darker transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
-                    Send
+                    <Send size={18} />
+                    <span className="hidden sm:inline">Send</span>
                   </button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Calendar modal */}
+        {/* Calendar Modal - Enhanced */}
         {showCalendar && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-4 rounded-2xl shadow-xl relative w-[90%] max-w-md">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4 animate-[fadeIn_0.2s_ease-out]">
+            <div className="bg-white p-4 md:p-6 rounded-2xl shadow-2xl relative w-full max-w-md animate-[slideUp_0.3s_ease-out]">
               <button
                 onClick={() => setShowCalendar(false)}
-                className="absolute top-3 right-3 text-gray-500 hover:text-black"
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-all z-10"
               >
-                <X size={22} />
+                <X size={20} />
               </button>
-              <h3 className="text-lg font-semibold text-olive-dark mb-3 text-center">
-                Select Dates
-              </h3>
-              <DateRange
-                ranges={dateRange}
-                onChange={(item) => {
-                  const { startDate, endDate } = item.selection;
+              
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-olive-light/20 p-2.5 rounded-full">
+                  <Calendar size={20} className="text-olive-dark" />
+                </div>
+                <h3 className="text-lg md:text-xl font-semibold text-olive-dark">
+                  Select Dates
+                </h3>
+              </div>
 
-                  // Check if the starting date is booked
-                  const startBooked = bookedDates.some((b) => {
-                    const booked = new Date(b);
+              <div className="overflow-x-auto">
+                <DateRange
+                  ranges={dateRange}
+                  onChange={(item) => {
+                    const { startDate, endDate } = item.selection;
+
+                    const startBooked = bookedDates.some((b) => {
+                      const booked = new Date(b);
+                      return (
+                        booked.getFullYear() === startDate.getFullYear() &&
+                        booked.getMonth() === startDate.getMonth() &&
+                        booked.getDate() === startDate.getDate()
+                      );
+                    });
+
+                    const invalidRange = bookedDates.some((b) => {
+                      const booked = new Date(b);
+                      return booked >= startDate && booked <= endDate;
+                    });
+
+                    if (startBooked) {
+                      alert(
+                        "This date is already booked. Please choose another check-in date."
+                      );
+                      return;
+                    }
+
+                    if (invalidRange) {
+                      alert(
+                        "Selected range includes unavailable days. Please choose different dates."
+                      );
+                      return;
+                    }
+
+                    setDateRange([item.selection]);
+                  }}
+                  minDate={new Date()}
+                  rangeColors={["#556B2F"]}
+                  dayContentRenderer={(date) => {
+                    const booked = isDateBooked(date);
                     return (
-                      booked.getFullYear() === startDate.getFullYear() &&
-                      booked.getMonth() === startDate.getMonth() &&
-                      booked.getDate() === startDate.getDate()
+                      <div
+                        style={{
+                          color: booked ? "gray" : "inherit",
+                          textDecoration: booked ? "line-through" : "none",
+                          opacity: booked ? 0.4 : 1,
+                          pointerEvents: booked ? "none" : "auto",
+                          cursor: booked ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {date.getDate()}
+                      </div>
                     );
-                  });
-
-                  // Check if any date within the selected range is booked
-                  const invalidRange = bookedDates.some((b) => {
-                    const booked = new Date(b);
-                    return booked >= startDate && booked <= endDate;
-                  });
-
-                  if (startBooked) {
-                    alert(
-                      "This date is already booked. Please choose another check-in date."
-                    );
-                    return;
-                  }
-
-                  if (invalidRange) {
-                    alert(
-                      "Selected range includes unavailable (booked) days. Please choose different dates."
-                    );
-                    return;
-                  }
-
-                  setDateRange([item.selection]);
-                }}
-                minDate={new Date()}
-                rangeColors={["#556B2F"]}
-                dayContentRenderer={(date) => {
-                  const booked = isDateBooked(date);
-                  return (
-                    <div
-                      style={{
-                        color: booked ? "gray" : "inherit",
-                        textDecoration: booked ? "line-through" : "none",
-                        opacity: booked ? 0.4 : 1,
-                        pointerEvents: booked ? "none" : "auto",
-                        cursor: booked ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {date.getDate()}
-                    </div>
-                  );
-                }}
-              />
+                  }}
+                />
+              </div>
 
               <div className="text-center mt-4">
                 <button
                   onClick={() => setShowCalendar(false)}
-                  className="bg-olive-dark text-white px-5 py-2 rounded-lg hover:opacity-90 transition"
+                  className="w-full bg-olive-dark text-white px-6 py-3 rounded-xl hover:bg-olive-darker transition-all duration-200 font-medium"
                 >
-                  Done
+                  Confirm Dates
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Reservation Summary Modal */}
+        {/* Reservation Summary Modal - Enhanced */}
         {showSummary && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-6 w-[90%] max-w-lg shadow-lg relative">
-              <button
-                onClick={() => setShowSummary(false)}
-                className="absolute top-3 right-3 text-gray-500 hover:text-black"
-              >
-                <X size={22} />
-              </button>
-              <h3 className="text-xl font-bold text-olive-dark text-center mb-4">
-                Booking Summary
-              </h3>
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 px-4 animate-[fadeIn_0.2s_ease-out] py-10">
+    {/* 🧾 Main modal */}
+    <div
+      className="bg-white rounded-2xl p-6 md:p-8 w-full max-w-lg shadow-2xl relative animate-[slideUp_0.3s_ease-out]"
+      style={{
+        maxHeight: "85vh", // 🔹 slightly shorter so top never gets hidden
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* ❌ Close Button */}
+      <button
+        onClick={() => setShowSummary(false)}
+        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-all"
+      >
+        <X size={20} />
+      </button>
 
-              <div className="space-y-3 text-gray-700">
-                <p>
-                  <strong>Guest Name:</strong> {user.name}
-                </p>
-                <p>
-                  <strong>Guest Email:</strong> {user.email}
-                </p>
-                <p>
-                  <strong>Guests:</strong> {guestCount}
-                </p>
-                <p>
-                  <strong>Check-in:</strong> {format(startDate, "MMM dd, yyyy")}
-                </p>
-                <p>
-                  <strong>Check-out:</strong> {format(endDate, "MMM dd, yyyy")}
-                </p>
-                <p>
-                  <strong>Nights:</strong> {nights}
-                </p>
-                <p>
-                  <strong>Price per Night:</strong> ₱{listing.price}
-                </p>
-                <p>
-                  <strong>Subtotal:</strong> ₱{subtotal.toLocaleString()}
-                </p>
+      {/* Header */}
+      <h3 className="text-2xl font-bold text-olive-dark mb-6 pr-8">
+        Booking Summary
+      </h3>
 
-                <div className="flex items-center gap-2 mt-4">
-                  <Tag size={18} />
-                  <input
-                    type="text"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    placeholder="Enter promo code"
-                    className="border px-3 py-2 rounded-lg w-full"
-                  />
-                  <button
-                    onClick={handleApplyPromo}
-                    className="bg-olive-dark text-white px-3 py-2 rounded-lg hover:opacity-90"
-                  >
-                    Apply
-                  </button>
-                </div>
+      {/* Scrollable Content */}
+      <div
+        className="space-y-4 mb-6 overflow-y-auto pr-1"
+        style={{ maxHeight: "65vh" }} // 🔹 scroll only this part
+      >
+        {/* Guest Info */}
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Guest Name</span>
+            <span className="font-medium text-gray-800">{user.name}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Email</span>
+            <span className="font-medium text-gray-800">{user.email}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Number of Guests</span>
+            <span className="font-medium text-gray-800">{guestCount}</span>
+          </div>
+        </div>
 
-                {discount > 0 && (
-                  <p className="text-green-600 mt-2">
-                    Discount Applied: {discount}% off
-                  </p>
-                )}
+        {/* Dates */}
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Check-in</span>
+            <span className="font-medium text-gray-800">
+              {format(startDate, "MMM dd, yyyy")}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Check-out</span>
+            <span className="font-medium text-gray-800">
+              {format(endDate, "MMM dd, yyyy")}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Number of Nights</span>
+            <span className="font-medium text-gray-800">{nights}</span>
+          </div>
+        </div>
 
-                <div className="border-t pt-3 text-lg font-semibold text-right">
-                  Total: ₱{total.toLocaleString()}
-                </div>
-              </div>
+        {/* Pricing */}
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Price per Night</span>
+            <span className="font-medium text-gray-800">
+              ₱{listing.price.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Subtotal</span>
+            <span className="font-medium text-gray-800">
+              ₱{subtotal.toLocaleString()}
+            </span>
+          </div>
+        </div>
 
-              <div className="text-center mt-6">
-                <PayPalButtons
-                  style={{ layout: "vertical", color: "gold" }}
-                  createOrder={(data, actions) => {
-                    return actions.order.create({
-                      purchase_units: [
-                        {
-                          amount: {
-                            currency_code: "PHP",
-                            value: total.toFixed(2), // your total price
-                          },
-                          description: listing.title,
-                        },
-                      ],
-                    });
-                  }}
-                  onApprove={async (data, actions) => {
-                    const order = await actions.order.capture();
+        {/* Promo Code */}
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <Tag
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              placeholder="Enter promo code"
+              className="w-full border border-gray-200 pl-10 pr-4 py-3 rounded-xl focus:ring-2 focus:ring-olive-dark focus:border-transparent outline-none transition-all text-sm"
+            />
+          </div>
+          <button
+            onClick={handleApplyPromo}
+            className="bg-olive-dark text-white px-5 py-3 rounded-xl hover:bg-olive-darker transition-all duration-200 font-medium whitespace-nowrap"
+          >
+            Apply
+          </button>
+        </div>
 
-                    // ✅ Save to Firestore after successful payment
-                    try {
-                      await addDoc(collection(db, "reservations"), {
-                        listingId: id,
-                        guestId: auth.currentUser.uid,
-                        hostId: listing.hostId,
-                        checkIn: format(startDate, "yyyy-MM-dd"),
-                        checkOut: format(endDate, "yyyy-MM-dd"),
-                        guests: guestCount,
-                        totalAmount: total,
-                        discountApplied: discount,
-                        paymentId: order.id,
-                        paymentStatus: order.status,
-                        status: "Confirmed",
-                        createdAt: new Date(),
-                      });
-
-                      const hostRef = doc(db, "users", listing.hostId);
-                      const hostSnap = await getDoc(hostRef);
-                      console.log("hostRef: ", hostRef);
-
-                      if (hostSnap.exists()) {
-                        const hostData = hostSnap.data();
-                        const currentEwallet = hostData.ewallet; // default to 0 if undefined
-
-                        await updateDoc(hostRef, {
-                          ewallet: currentEwallet + total,
-                        });
-                      }
-
-                      //add points to host
-                      updateHostPoints(listing.hostId, 20); // e.g., add 50 points per reservation
-
-                      console.log("email sent to: " + user.email);
-                      await axios.post(
-                        "https://custom-email-backend.onrender.com/send-reservation-receipt",
-                        {
-                          guestEmail: user.email,
-                          guestName: user.name,
-                          listingTitle: listing.title,
-                          hostName: hostName,
-                          checkIn: format(startDate, "MMM dd, yyyy"),
-                          checkOut: format(endDate, "MMM dd, yyyy"),
-                          totalAmount: total,
-                          guests: guestCount,
-                          reservationId: order.id,
-                          nights: nights,
-                        },
-                        {
-                          headers: {
-                            "Content-Type": "application/json",
-                          },
-                        }
-                      );
-
-                      alert("Reservation confirmed and payment successful!");
-
-                      setShowSummary(false);
-                    } catch (err) {
-                      console.error("Error saving reservation:", err);
-                      alert("Error saving reservation after payment.");
-                    }
-                  }}
-                  onError={(err) => {
-                    console.error("PayPal error:", err);
-                    alert("Payment failed. Please try again.");
-                  }}
-                />
-              </div>
-            </div>
+        {discount > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2 animate-[slideUp_0.3s_ease-out]">
+            <Check size={18} className="text-green-600" />
+            <span className="text-green-700 font-medium text-sm">
+              {discount}% discount applied!
+            </span>
           </div>
         )}
+
+        {/* Total */}
+        <div className="border-t pt-4">
+          <div className="flex justify-between items-center">
+            <span className="text-lg font-semibold text-gray-800">
+              Total Amount
+            </span>
+            <span className="text-2xl font-bold text-olive-dark">
+              ₱{total.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Button (sticky at bottom) */}
+      <div className="pt-3 border-t">
+        <PayPalButtons
+          style={{ layout: "vertical", color: "gold" }}
+          createOrder={(data, actions) => {
+            return actions.order.create({
+              purchase_units: [
+                {
+                  amount: {
+                    currency_code: "PHP",
+                    value: total.toFixed(2),
+                  },
+                  description: listing.title,
+                },
+              ],
+            });
+          }}
+          onApprove={async (data, actions) => {
+            const order = await actions.order.capture();
+
+            try {
+              await addDoc(collection(db, "reservations"), {
+                listingId: id,
+                guestId: auth.currentUser.uid,
+                hostId: listing.hostId,
+                checkIn: format(startDate, "yyyy-MM-dd"),
+                checkOut: format(endDate, "yyyy-MM-dd"),
+                guests: guestCount,
+                totalAmount: total,
+                discountApplied: discount,
+                paymentId: order.id,
+                paymentStatus: order.status,
+                status: "Confirmed",
+                createdAt: new Date(),
+              });
+
+              const hostRef = doc(db, "users", listing.hostId);
+              const hostSnap = await getDoc(hostRef);
+
+              if (hostSnap.exists()) {
+                const hostData = hostSnap.data();
+                const currentEwallet = hostData.ewallet;
+                await updateDoc(hostRef, { ewallet: currentEwallet + total });
+              }
+
+              updateHostPoints(listing.hostId, 20);
+
+              await axios.post(
+                "https://custom-email-backend.onrender.com/send-reservation-receipt",
+                {
+                  guestEmail: user.email,
+                  guestName: user.name,
+                  listingTitle: listing.title,
+                  hostName: hostName,
+                  checkIn: format(startDate, "MMM dd, yyyy"),
+                  checkOut: format(endDate, "MMM dd, yyyy"),
+                  totalAmount: total,
+                  guests: guestCount,
+                  reservationId: order.id,
+                  nights: nights,
+                },
+                { headers: { "Content-Type": "application/json" } }
+              );
+
+              alert("Reservation confirmed and payment successful!");
+              setShowSummary(false);
+            } catch (err) {
+              console.error("Error saving reservation:", err);
+              alert("Error saving reservation after payment.");
+            }
+          }}
+          onError={(err) => {
+            console.error("PayPal error:", err);
+            alert("Payment failed. Please try again.");
+          }}
+        />
+      </div>
+    </div>
+  </div>
+)}
+
       </div>
 
       <Footer />
+
+      {/* Add CSS animations */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+      `}</style>
     </div>
   );
 };

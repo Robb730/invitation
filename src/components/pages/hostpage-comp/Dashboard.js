@@ -146,9 +146,13 @@ setBookings(completedBookings);
 
   if (loading) {
     return (
-      <div className="text-center mt-10 text-gray-600 animate-pulse">
-        Loading Dashboard...
-      </div>
+      <div className="flex flex-col items-center justify-center py-20">
+              <div className="relative w-20 h-20 mb-6">
+                <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-t-olive rounded-full animate-spin"></div>
+              </div>
+              <p className="text-gray-600 text-lg animate-pulse">Loading your reservations...</p>
+            </div>
     );
   }
 

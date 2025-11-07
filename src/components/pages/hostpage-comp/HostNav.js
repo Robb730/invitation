@@ -196,7 +196,6 @@ const HostNav = ({ user, toggleSidebar }) => {
   const handleSaveDraft = async (e) => {
     e.preventDefault();
     if (!user) return alert("You must be logged in.");
-    if (images.length === 0) return alert("Please add at least one image.");
     if (images.length > 4) return alert("You can upload up to 4 images only.");
 
     try {
@@ -208,7 +207,7 @@ const HostNav = ({ user, toggleSidebar }) => {
         title,
         location,
         category,
-        status: "Active", // or Draft
+        status: "Draft", // or Draft
         price,
         priceType,
         guests,
@@ -226,6 +225,7 @@ const HostNav = ({ user, toggleSidebar }) => {
 
       alert("Listing saved as draft!");
       resetForm();
+      window.dispatchEvent(new Event("refreshListings"));
     } catch (err) {
       alert("Error adding listing: " + err.message);
     } finally {
@@ -321,6 +321,7 @@ const HostNav = ({ user, toggleSidebar }) => {
       updateHostPoints(user.uid, 50);
       alert("Listing published successfully!\nYou earned 50 points.");
       resetForm();
+      window.dispatchEvent(new Event("refreshListings"));
     } catch (err) {
       alert("Error adding listing: " + err.message);
     } finally {
