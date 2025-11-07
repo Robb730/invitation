@@ -30,6 +30,7 @@ import { serverTimestamp, onSnapshot, orderBy } from "firebase/firestore";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import markerIcon from "./hostpage-comp/images/marker_olive.png"; // you can replace this with your own image
+import { updateHostPoints } from "../../utils/pointSystem";
 
 const customMarker = L.icon({
   iconUrl: markerIcon,
@@ -1081,6 +1082,9 @@ const ListingDetails = () => {
                           ewallet: currentEwallet + total,
                         });
                       }
+
+                      //add points to host
+                      updateHostPoints(listing.hostId, 20); // e.g., add 50 points per reservation
 
                       console.log("email sent to: " + user.email);
                       await axios.post(
