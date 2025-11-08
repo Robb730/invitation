@@ -45,6 +45,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import markerIcon from "./hostpage-comp/images/marker_olive.png";
 import { updateHostPoints } from "../../utils/pointSystem";
+import { addNotification } from "../../utils/notificationSystem"
 
 const customMarker = L.icon({
   iconUrl: markerIcon,
@@ -1365,6 +1366,8 @@ const ListingDetails = () => {
                         },
                         { headers: { "Content-Type": "application/json" } }
                       );
+
+                      addNotification("Reservation", id, listing.title, auth.currentUser.uid, listing.hostId, 20);
 
                       alert("Reservation confirmed and payment successful!");
                       setShowSummary(false);

@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, MapPin, Star, ArrowRight, X, CheckCircle } from "lucide-react";
+import {
+  Calendar,
+  MapPin,
+  Star,
+  ArrowRight,
+  X,
+  CheckCircle,
+} from "lucide-react";
 import {
   collection,
   query,
@@ -14,6 +21,7 @@ import { db, auth } from "../../firebaseConfig";
 import Navbar from "./homepage-comp/Navbar";
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { addNotification } from "../../utils/notificationSystem";
 
 const GuestReservations = () => {
   const [reservations, setReservations] = useState([]);
@@ -131,8 +139,10 @@ const GuestReservations = () => {
         }));
 
         updatedReservations.sort((a, b) => {
-          const dateA = a.createdAt?.seconds || new Date(a.createdAt).getTime() || 0;
-          const dateB = b.createdAt?.seconds || new Date(b.createdAt).getTime() || 0;
+          const dateA =
+            a.createdAt?.seconds || new Date(a.createdAt).getTime() || 0;
+          const dateB =
+            b.createdAt?.seconds || new Date(b.createdAt).getTime() || 0;
           return dateB - dateA;
         });
 
@@ -148,7 +158,12 @@ const GuestReservations = () => {
   }, [navigate]);
 
   const handleCancel = async (res) => {
-    if (!window.confirm("Do you want to request a cancellation for this reservation?")) return;
+    if (
+      !window.confirm(
+        "Do you want to request a cancellation for this reservation?"
+      )
+    )
+      return;
 
     try {
       const reservationRef = doc(db, "reservations", res.id);
@@ -160,6 +175,26 @@ const GuestReservations = () => {
         )
       );
 
+      const listingRef = doc(db, "listings", res.listingId);
+      const listingSnap = await getDoc(listingRef);
+
+      if (!listingSnap.exists()) {
+        console.error("Listing not found!");
+        return;
+      }
+
+      // 2️⃣ Extract data from the listing
+      const listingData = listingSnap.data();
+      const listingTitle = listingData.title || "Untitled Listing";
+
+      addNotification(
+        "Cancellation Request",
+        res.listingId,
+        listingTitle,
+        res.guestId,
+        res.hostId,
+        0
+      );
       alert("Your cancellation request has been sent to the host.");
     } catch (error) {
       console.error("Error sending cancellation request:", error);
@@ -259,15 +294,21 @@ const GuestReservations = () => {
                 <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
                 <div className="absolute inset-0 border-4 border-t-olive rounded-full animate-spin"></div>
               </div>
-              <p className="text-gray-600 text-lg animate-pulse">Loading your reservations...</p>
+              <p className="text-gray-600 text-lg animate-pulse">
+                Loading your reservations...
+              </p>
             </div>
           ) : reservations.length === 0 ? (
             <div className="text-center py-20 animate-fade-in">
               <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
                 <Calendar className="w-12 h-12 text-gray-400" />
               </div>
-              <h2 className="text-2xl font-semibold text-gray-800 mb-2">No reservations yet</h2>
-              <p className="text-gray-600 text-lg mb-6">Start exploring and book your next adventure!</p>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+                No reservations yet
+              </h2>
+              <p className="text-gray-600 text-lg mb-6">
+                Start exploring and book your next adventure!
+              </p>
               <button
                 onClick={() => navigate("/")}
                 className="bg-olive text-white px-8 py-3 rounded-full font-semibold hover:bg-olive-dark transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5"
@@ -306,7 +347,7 @@ const GuestReservations = () => {
                       />
                     ))}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    
+
                     <span
                       className={`absolute top-4 right-4 text-xs font-bold px-4 py-2 rounded-full border backdrop-blur-sm transition-all duration-300 ${
                         statusColor[res.status]
@@ -320,24 +361,35 @@ const GuestReservations = () => {
                     <h2 className="text-xl font-bold text-gray-900 line-clamp-1 group-hover:text-olive transition-colors duration-300">
                       {res.listing?.title || "Unknown Listing"}
                     </h2>
-                    
+
                     <div className="space-y-2 text-sm">
                       <p className="flex items-center text-gray-600 gap-x-2">
                         <MapPin className="h-4 w-4 text-olive flex-shrink-0" />
-                        <span className="line-clamp-1">{res.listing?.location || "Unknown location"}</span>
+                        <span className="line-clamp-1">
+                          {res.listing?.location || "Unknown location"}
+                        </span>
                       </p>
-                      
+
                       <p className="flex items-start text-gray-600 gap-x-2">
                         <Calendar className="h-4 w-4 text-olive flex-shrink-0 mt-0.5" />
                         {res.listing.superCategory === "Homes" ? (
                           <span className="text-xs leading-relaxed">
-                            <span className="font-semibold text-gray-800">Check-in:</span> {res.checkIn}
+                            <span className="font-semibold text-gray-800">
+                              Check-in:
+                            </span>{" "}
+                            {res.checkIn}
                             <br />
-                            <span className="font-semibold text-gray-800">Check-out:</span> {res.checkOut}
+                            <span className="font-semibold text-gray-800">
+                              Check-out:
+                            </span>{" "}
+                            {res.checkOut}
                           </span>
                         ) : (
                           <span className="text-xs">
-                            <span className="font-semibold text-gray-800">Date:</span> {res.checkIn || res.bookedDate || "N/A"}
+                            <span className="font-semibold text-gray-800">
+                              Date:
+                            </span>{" "}
+                            {res.checkIn || res.bookedDate || "N/A"}
                           </span>
                         )}
                       </p>
@@ -409,8 +461,12 @@ const GuestReservations = () => {
               </div>
 
               <div className="mb-6 p-4 bg-gray-50 rounded-2xl">
-                <p className="text-sm font-semibold text-gray-700 mb-1">Listing</p>
-                <p className="text-gray-900 font-medium">{selectedReservation?.listing?.title}</p>
+                <p className="text-sm font-semibold text-gray-700 mb-1">
+                  Listing
+                </p>
+                <p className="text-gray-900 font-medium">
+                  {selectedReservation?.listing?.title}
+                </p>
               </div>
 
               <div className="flex justify-center gap-2 mb-8">

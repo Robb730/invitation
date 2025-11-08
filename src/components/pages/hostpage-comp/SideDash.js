@@ -1,12 +1,34 @@
-import React from "react";
+import React, {useEffect, useState} from "react";
+import {collection, onSnapshot, query, where} from "firebase/firestore";
+import {db} from "../../../firebaseConfig";
+import {getAuth} from "firebase/auth"
+
 
 const SideDash = ({ setActivePage, isOpen, toggleSidebar, activePage }) => {
+  const [hasUnread, setHasUnread] = useState(false);
+  const auth = getAuth();
+  const hostId = auth.currentUser?.uid;
+
+  useEffect(() => {
+    if (!hostId) return;
+
+    const q = query(collection(db, "notifications"), where("hostId", "==", hostId));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const unread = snapshot.docs.some((doc) => !doc.data().isRead);
+      setHasUnread(unread);
+    });
+
+    return () => unsubscribe();
+  }, [hostId]);
+
   const menuItems = [
     { label: "Dashboard" },
     { label: "My Listings" },
     { label: "Reservations" },
     { label: "Messages" },
     { label: "Points & Rewards" },
+    { label: "Notifications" },
     { label: "Earnings" },
     { label: "Settings" },
   ];
@@ -21,6 +43,7 @@ const SideDash = ({ setActivePage, isOpen, toggleSidebar, activePage }) => {
         <nav className="flex flex-col gap-y-3">
           {menuItems.map((item, idx) => {
             const isActive = activePage === item.label;
+            const showBadge = item.label === "Notifications" && hasUnread;
 
             return (
               <button
@@ -37,6 +60,9 @@ const SideDash = ({ setActivePage, isOpen, toggleSidebar, activePage }) => {
                   }`}
               >
                 <span>{item.label}</span>
+                {showBadge && (
+                  <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
               </button>
             );
           })}

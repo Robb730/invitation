@@ -292,6 +292,8 @@ const Dashboard = ({ setActivePage }) => {
                             ? "bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200/50"
                             : r.status?.toLowerCase() === "completed"
                             ? "bg-gradient-to-r from-blue-50 to-sky-50 text-blue-700 border border-blue-200/50"
+                            : r.status?.toLowerCase() === "cancellation requested"
+                            ? "bg-gradient-to-r from-orange-100 to-orange-50 text-orange-700 border border-orange-200/50"
                             : "bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border border-red-200/50"
                         }`}
                       >

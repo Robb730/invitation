@@ -11,6 +11,7 @@ import Messages from "./hostpage-comp/Messages";
 import Earnings from "./hostpage-comp/Earnings";
 import Settings from "./hostpage-comp/Settings";
 import PointsAndRewards from "./hostpage-comp/PointsAndRewards";
+import Notifications from "./hostpage-comp/Notifications";
 
 
 const HostPage = () => {
@@ -62,8 +63,10 @@ const HostPage = () => {
       return <Reservations />;
     case "Messages":
       return <Messages />;
-      case "Points & Rewards":
+    case "Points & Rewards":
       return <PointsAndRewards />;
+    case "Notifications":
+      return <Notifications />;
     case "Earnings":
       return <Earnings />;
     case "Settings":

@@ -24,6 +24,8 @@ import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import axios from "axios";
+import { addNotification } from "../../../utils/notificationSystem";
+import { updateHostPoints } from "../../../utils/pointSystem";
 
 const Reservations = () => {
   const [reservations, setReservations] = useState([]);
@@ -193,10 +195,14 @@ const Reservations = () => {
     <div className="bg-gradient-to-br from-white to-gray-50/50 rounded-3xl shadow-2xl p-8 w-full max-w-6xl mx-auto mt-10 min-h-[70vh] border border-white/60">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-olive-dark tracking-tight">Reservations</h2>
-          <p className="text-sm text-gray-600 mt-1">Manage and track your property bookings</p>
+          <h2 className="text-3xl font-bold text-olive-dark tracking-tight">
+            Reservations
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Manage and track your property bookings
+          </p>
         </div>
-        
+
         {/* 🔹 Filter Buttons */}
         <div className="flex flex-wrap gap-2">
           {[
@@ -236,8 +242,12 @@ const Reservations = () => {
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
             <Filter size={32} className="text-gray-400" />
           </div>
-          <p className="text-gray-600 font-medium text-lg">No {filter === "all" ? "" : filter} reservations found</p>
-          <p className="text-gray-400 text-sm mt-2">Try adjusting your filters or check back later</p>
+          <p className="text-gray-600 font-medium text-lg">
+            No {filter === "all" ? "" : filter} reservations found
+          </p>
+          <p className="text-gray-400 text-sm mt-2">
+            Try adjusting your filters or check back later
+          </p>
         </div>
       ) : (
         <div className="grid gap-5">
@@ -252,7 +262,9 @@ const Reservations = () => {
                   <h3 className="text-xl font-bold text-olive-dark mb-1">
                     {reservation.listingTitle}
                   </h3>
-                  <p className="text-sm text-gray-500">Reservation #{reservation.id.slice(0, 8)}</p>
+                  <p className="text-sm text-gray-500">
+                    Reservation #{reservation.id.slice(0, 8)}
+                  </p>
                 </div>
                 <span
                   className={`inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full shadow-sm border ${
@@ -265,15 +277,17 @@ const Reservations = () => {
                       : "bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-200"
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${
-                    reservation.status === "Confirmed"
-                      ? "bg-green-500 animate-pulse"
-                      : reservation.status === "Cancellation Requested"
-                      ? "bg-yellow-500 animate-pulse"
-                      : reservation.status === "Completed"
-                      ? "bg-blue-500"
-                      : "bg-red-500"
-                  }`} />
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      reservation.status === "Confirmed"
+                        ? "bg-green-500 animate-pulse"
+                        : reservation.status === "Cancellation Requested"
+                        ? "bg-yellow-500 animate-pulse"
+                        : reservation.status === "Completed"
+                        ? "bg-blue-500"
+                        : "bg-red-500"
+                    }`}
+                  />
                   {reservation.status || "Pending"}
                 </span>
               </div>
@@ -285,7 +299,9 @@ const Reservations = () => {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 font-medium">Guest</p>
-                    <p className="text-sm font-semibold text-gray-800">{reservation.guestName}</p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {reservation.guestName}
+                    </p>
                   </div>
                 </div>
 
@@ -295,7 +311,9 @@ const Reservations = () => {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 font-medium">
-                      {reservation.listingCategory === "Homes" ? "Check-in / Check-out" : "Schedule"}
+                      {reservation.listingCategory === "Homes"
+                        ? "Check-in / Check-out"
+                        : "Schedule"}
                     </p>
                     <p className="text-sm font-semibold text-gray-800">
                       {reservation.listingCategory === "Homes"
@@ -310,7 +328,9 @@ const Reservations = () => {
                     <Clock size={18} className="text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 font-medium">Booked on</p>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Booked on
+                    </p>
                     <p className="text-sm font-semibold text-gray-800">
                       {reservation.createdAt?.toDate
                         ? reservation.createdAt.toDate().toLocaleDateString()
@@ -322,7 +342,9 @@ const Reservations = () => {
 
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-4 gap-3">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-sm text-gray-500 font-medium">Total Amount:</span>
+                  <span className="text-sm text-gray-500 font-medium">
+                    Total Amount:
+                  </span>
                   <span className="text-2xl font-bold text-olive-dark">
                     ₱{reservation.totalAmount?.toLocaleString() || 0}
                   </span>
@@ -332,8 +354,18 @@ const Reservations = () => {
                   className="bg-olive-dark text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-olive-dark/90 transition-all duration-200 hover:shadow-lg hover:scale-105 flex items-center gap-2 justify-center"
                 >
                   <span>View Details</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </button>
               </div>
@@ -388,15 +420,18 @@ const Reservations = () => {
                       : "bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border border-red-200"
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${
-                    selectedReservation.status === "Confirmed"
-                      ? "bg-green-500 animate-pulse"
-                      : selectedReservation.status === "Cancellation Requested"
-                      ? "bg-yellow-500 animate-pulse"
-                      : selectedReservation.status === "Completed"
-                      ? "bg-blue-500 animate-pulse"
-                      : "bg-red-500"
-                  }`} />
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      selectedReservation.status === "Confirmed"
+                        ? "bg-green-500 animate-pulse"
+                        : selectedReservation.status ===
+                          "Cancellation Requested"
+                        ? "bg-yellow-500 animate-pulse"
+                        : selectedReservation.status === "Completed"
+                        ? "bg-blue-500 animate-pulse"
+                        : "bg-red-500"
+                    }`}
+                  />
                   {selectedReservation.status || "Pending"}
                 </span>
               </div>
@@ -405,31 +440,45 @@ const Reservations = () => {
                 <div className="space-y-4">
                   <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                     <div className="flex justify-between items-start">
-                      <span className="text-sm font-semibold text-gray-600">Created:</span>
+                      <span className="text-sm font-semibold text-gray-600">
+                        Created:
+                      </span>
                       <span className="text-sm text-gray-800 text-right">
                         {selectedReservation.createdAt?.toDate
-                          ? selectedReservation.createdAt.toDate().toLocaleString()
-                          : new Date(selectedReservation.createdAt).toLocaleString()}
+                          ? selectedReservation.createdAt
+                              .toDate()
+                              .toLocaleString()
+                          : new Date(
+                              selectedReservation.createdAt
+                            ).toLocaleString()}
                       </span>
                     </div>
-                    
+
                     <div className="flex justify-between items-start border-t border-gray-200 pt-3">
-                      <span className="text-sm font-semibold text-gray-600">Discount:</span>
+                      <span className="text-sm font-semibold text-gray-600">
+                        Discount:
+                      </span>
                       <span className="text-sm text-gray-800">
                         {selectedReservation.discountApplied
                           ? `${selectedReservation.discountApplied}%`
                           : "No discount"}
                       </span>
                     </div>
-                    
+
                     <div className="flex justify-between items-start border-t border-gray-200 pt-3">
-                      <span className="text-sm font-semibold text-gray-600">Guests:</span>
-                      <span className="text-sm text-gray-800">{selectedReservation.guests || 1}</span>
+                      <span className="text-sm font-semibold text-gray-600">
+                        Guests:
+                      </span>
+                      <span className="text-sm text-gray-800">
+                        {selectedReservation.guests || 1}
+                      </span>
                     </div>
 
                     <div className="flex justify-between items-start border-t border-gray-200 pt-3">
                       <span className="text-sm font-semibold text-gray-600">
-                        {selectedReservation.listingCategory === "Homes" ? "Check-in / Check-out:" : "Schedule:"}
+                        {selectedReservation.listingCategory === "Homes"
+                          ? "Check-in / Check-out:"
+                          : "Schedule:"}
                       </span>
                       <span className="text-sm text-gray-800 text-right">
                         {selectedReservation.listingCategory === "Homes"
@@ -441,9 +490,12 @@ const Reservations = () => {
 
                   <div className="bg-gradient-to-r from-olive-dark/10 to-olive-dark/5 rounded-xl p-4 border border-olive-dark/20">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold text-olive-dark">Total Amount:</span>
+                      <span className="text-sm font-bold text-olive-dark">
+                        Total Amount:
+                      </span>
                       <span className="text-2xl font-bold text-olive-dark">
-                        ₱{selectedReservation.totalAmount?.toLocaleString() || 0}
+                        ₱
+                        {selectedReservation.totalAmount?.toLocaleString() || 0}
                       </span>
                     </div>
                   </div>
@@ -454,11 +506,19 @@ const Reservations = () => {
                       <button
                         onClick={async () => {
                           try {
-                            const resRef = doc(db, "reservations", selectedReservation.id);
+                            const resRef = doc(
+                              db,
+                              "reservations",
+                              selectedReservation.id
+                            );
                             await updateDoc(resRef, { status: "Cancelled" });
 
                             let guestData = null;
-                            const guestRef = doc(db, "users", selectedReservation.guestId);
+                            const guestRef = doc(
+                              db,
+                              "users",
+                              selectedReservation.guestId
+                            );
                             const guestSnap = await getDoc(guestRef);
                             if (guestSnap.exists()) {
                               guestData = guestSnap.data();
@@ -466,7 +526,11 @@ const Reservations = () => {
 
                             let listingData = null;
                             if (selectedReservation.listingId) {
-                              const listingRef = doc(db, "listings", selectedReservation.listingId);
+                              const listingRef = doc(
+                                db,
+                                "listings",
+                                selectedReservation.listingId
+                              );
                               const listingSnap = await getDoc(listingRef);
                               if (listingSnap.exists()) {
                                 listingData = listingSnap.data();
@@ -474,7 +538,11 @@ const Reservations = () => {
                             }
 
                             let hostData = null;
-                            const hostRef = doc(db, "users", selectedReservation.hostId);
+                            const hostRef = doc(
+                              db,
+                              "users",
+                              selectedReservation.hostId
+                            );
                             const hostSnap = await getDoc(hostRef);
                             if (hostSnap.exists()) {
                               hostData = hostSnap.data();
@@ -486,57 +554,108 @@ const Reservations = () => {
                                 "https://custom-email-backend.onrender.com/send-cancellation-email",
                                 {
                                   guestEmail: guestData.email,
-                                  guestName: guestData.name || guestData.fullName,
+                                  guestName:
+                                    guestData.name || guestData.fullName,
                                   listingTitle: listingData.title,
-                                  hostName: hostData.fullName || hostData.name || "Host",
+                                  hostName:
+                                    hostData.fullName ||
+                                    hostData.name ||
+                                    "Host",
                                   checkIn: selectedReservation.checkIn,
                                   checkOut: selectedReservation.checkOut,
                                   totalAmount: selectedReservation.totalAmount,
                                   reservationId: selectedReservation.id,
                                 },
-                                { headers: { "Content-Type": "application/json" } }
+                                {
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                }
                               );
-                            } else if (listingData.superCategory === "Experiences") {
+                            } else if (
+                              listingData.superCategory === "Experiences"
+                            ) {
                               await axios.post(
                                 "https://custom-email-backend.onrender.com/send-cancellation-email-experiences",
                                 {
                                   guestEmail: guestData.email,
-                                  guestName: guestData.name || guestData.fullName,
+                                  guestName:
+                                    guestData.name || guestData.fullName,
                                   listingTitle: listingData.title,
-                                  hostName: hostData.fullName || hostData.name || "Host",
+                                  hostName:
+                                    hostData.fullName ||
+                                    hostData.name ||
+                                    "Host",
                                   bookedDate: selectedReservation.checkIn,
                                   totalAmount: selectedReservation.totalAmount,
                                   reservationId: selectedReservation.id,
                                 },
-                                { headers: { "Content-Type": "application/json" } }
+                                {
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                }
                               );
-                            } else if (listingData.superCategory === "Services") {
+                            } else if (
+                              listingData.superCategory === "Services"
+                            ) {
                               await axios.post(
                                 "https://custom-email-backend.onrender.com/send-cancellation-email-services",
                                 {
                                   guestEmail: guestData.email,
-                                  guestName: guestData.name || guestData.fullName,
+                                  guestName:
+                                    guestData.name || guestData.fullName,
                                   listingTitle: listingData.title,
-                                  hostName: hostData.fullName || hostData.name || "Host",
-                                  bookedDate: selectedReservation.checkIn || selectedReservation.bookedDate,
+                                  hostName:
+                                    hostData.fullName ||
+                                    hostData.name ||
+                                    "Host",
+                                  bookedDate:
+                                    selectedReservation.checkIn ||
+                                    selectedReservation.bookedDate,
                                   totalAmount: selectedReservation.totalAmount,
                                   reservationId: selectedReservation.id,
                                 },
-                                { headers: { "Content-Type": "application/json" } }
+                                {
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                }
                               );
                             }
-
+                            addNotification(
+                              "Cancelled",
+                              selectedReservation.listingId,
+                              listingData.title,
+                              selectedReservation.guestId,
+                              selectedReservation.hostId,
+                              -20
+                            );
+                            updateHostPoints(hostId, -20);
                             alert("Cancellation approved and guest notified.");
                             closeModal();
                           } catch (error) {
-                            console.error("Error approving cancellation:", error);
+                            console.error(
+                              "Error approving cancellation:",
+                              error
+                            );
                             alert("Failed to approve cancellation.");
                           }
                         }}
                         className="flex-1 bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-3 rounded-xl text-sm font-semibold hover:from-green-700 hover:to-green-600 transition-all duration-200 hover:shadow-lg hover:scale-105 flex items-center justify-center gap-2"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
                         Approve Request
                       </button>
@@ -544,12 +663,19 @@ const Reservations = () => {
                       <button
                         onClick={async () => {
                           try {
-                            const resRef = doc(db, "reservations", selectedReservation.id);
+                            const resRef = doc(
+                              db,
+                              "reservations",
+                              selectedReservation.id
+                            );
                             await updateDoc(resRef, { status: "Confirmed" });
                             alert("Cancellation request declined.");
                             closeModal();
                           } catch (error) {
-                            console.error("Error declining cancellation:", error);
+                            console.error(
+                              "Error declining cancellation:",
+                              error
+                            );
                             alert("Failed to decline request.");
                           }
                         }}
@@ -586,7 +712,9 @@ const Reservations = () => {
                       type="number"
                       min="1"
                       value={editedGuests}
-                      onChange={(e) => setEditedGuests(parseInt(e.target.value))}
+                      onChange={(e) =>
+                        setEditedGuests(parseInt(e.target.value))
+                      }
                       className="border-2 border-gray-200 focus:border-olive-dark focus:ring-2 focus:ring-olive-dark/20 rounded-xl w-full p-3 transition-all duration-200 outline-none"
                     />
                   </div>
