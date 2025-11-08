@@ -14,11 +14,11 @@ import {
 import { db, auth } from "../../firebaseConfig";
 import Navbar from "./homepage-comp/Navbar";
 import Footer from "./homepage-comp/Footer";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  X, 
-  Calendar, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Calendar,
   Tag,
   Users,
   Bed,
@@ -29,7 +29,7 @@ import {
   Share2,
   MessageCircle,
   Send,
-  Check
+  Check,
 } from "lucide-react";
 import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
@@ -73,6 +73,8 @@ const ListingDetails = () => {
   const [ratings, setRatings] = useState([]);
   const [averageRating, setAverageRating] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  const [hostTier, setHostTier] = useState("Bronze");
 
   const [bookedDates, setBookedDates] = useState([]);
   const [dateRange, setDateRange] = useState([
@@ -241,6 +243,14 @@ const ListingDetails = () => {
           const data = hostSnap.data();
           setHostName(data.fullName || data.name || "Unknown Host");
           setHostPic(data.profilePic || "pic");
+          //fetch host tier
+
+          const hostTier = doc(db, "hostPoints", listing.hostId);
+          const hostTierSnap = await getDoc(hostTier);
+          if (hostTierSnap.exists()) {
+            const tierData = hostTierSnap.data();
+            setHostTier(tierData.tier || "Bronze");
+          }
         }
       } catch (err) {
         console.error("Error fetching host:", err);
@@ -316,7 +326,7 @@ const ListingDetails = () => {
     e.stopPropagation();
     setSelectedIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
-  
+
   const handleNext = (e) => {
     e.stopPropagation();
     setSelectedIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
@@ -635,7 +645,11 @@ const ListingDetails = () => {
               <div className="mt-10 md:mt-14">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                   <h3 className="text-2xl md:text-3xl font-bold text-olive-dark flex items-center gap-3">
-                    <Star size={24} className="text-yellow-500" fill="currentColor" />
+                    <Star
+                      size={24}
+                      className="text-yellow-500"
+                      fill="currentColor"
+                    />
                     Reviews
                   </h3>
                   <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-100 px-4 py-1.5 rounded-full text-yellow-600 font-medium shadow-sm w-fit">
@@ -701,15 +715,101 @@ const ListingDetails = () => {
           <div className="space-y-4 md:space-y-5 lg:sticky lg:top-24 lg:self-start">
             {/* Host Info */}
             <div className="bg-white border rounded-xl md:rounded-2xl p-4 md:p-5 shadow-md flex items-center gap-4">
-              <img
-                src={hostPic}
-                alt={hostName}
-                className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover ring-2 ring-olive"
-              />
-              <div>
-                <h4 className="font-semibold text-olive-dark text-sm md:text-base">
-                  {hostName}
-                </h4>
+              <div className="relative">
+                <img
+                  src={hostPic}
+                  alt={hostName}
+                  className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover ring-2 ring-olive"
+                />
+                {/* Tier Badge on Avatar */}
+                <div
+                  className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shadow-lg border-2 border-white ${
+                    hostTier === "Hiraya Host"
+                      ? "bg-gradient-to-br from-emerald-600 to-emerald-400 text-white"
+                      : hostTier === "Diamond"
+                      ? "bg-gradient-to-br from-cyan-400 to-blue-500 text-white"
+                      : hostTier === "Platinum"
+                      ? "bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800"
+                      : hostTier === "Gold"
+                      ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-white"
+                      : hostTier === "Silver"
+                      ? "bg-gradient-to-br from-gray-200 to-gray-300 text-gray-700"
+                      : hostTier === "Bronze"
+                      ? "bg-gradient-to-br from-amber-600 to-amber-800 text-white"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {hostTier === "Hiraya Host"
+                    ? "✨"
+                    : hostTier === "Diamond"
+                    ? "💎"
+                    : hostTier === "Platinum"
+                    ? "⭐"
+                    : hostTier === "Gold"
+                    ? "👑"
+                    : hostTier === "Silver"
+                    ? "🥈"
+                    : hostTier === "Bronze"
+                    ? "🥉"
+                    : "🏅"}
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="font-semibold text-olive-dark text-sm md:text-base">
+                    {hostName}
+                  </h4>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] md:text-xs font-bold shadow-sm ${
+                      hostTier === "Hiraya Host"
+                        ? "bg-gradient-to-r from-emerald-600 via-emerald-400 to-teal-500 text-white border-2 border-emerald-300 shadow-2xl shadow-emerald-500/70 animate-pulse hover:scale-105 transition-transform duration-300"
+                        : hostTier === "Diamond"
+                        ? "bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-700 border border-cyan-200"
+                        : hostTier === "Platinum"
+                        ? "bg-gradient-to-r from-gray-50 to-slate-50 text-gray-700 border border-gray-300"
+                        : hostTier === "Gold"
+                        ? "bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-700 border border-yellow-200"
+                        : hostTier === "Silver"
+                        ? "bg-gradient-to-r from-gray-50 to-zinc-50 text-gray-600 border border-gray-200"
+                        : hostTier === "Bronze"
+                        ? "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200"
+                        : "bg-gray-50 text-gray-500 border border-gray-200"
+                    }`}
+                  >
+                    <span
+                      className={`text-xs ${
+                        hostTier === "Hiraya Host"
+                          ? "text-white"
+                          : hostTier === "Diamond"
+                          ? "text-cyan-500"
+                          : hostTier === "Platinum"
+                          ? "text-gray-400"
+                          : hostTier === "Gold"
+                          ? "text-yellow-500"
+                          : hostTier === "Silver"
+                          ? "text-gray-400"
+                          : hostTier === "Bronze"
+                          ? "text-amber-600"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      {hostTier === "Hiraya Host"
+                        ? "✨"
+                        : hostTier === "Diamond"
+                        ? "💎"
+                        : hostTier === "Platinum"
+                        ? "⭐"
+                        : hostTier === "Gold"
+                        ? "👑"
+                        : hostTier === "Silver"
+                        ? "🥈"
+                        : hostTier === "Bronze"
+                        ? "🥉"
+                        : "🏅"}
+                    </span>
+                    {hostTier || "Standard"} Host
+                  </span>
+                </div>
                 <p className="text-gray-500 text-xs md:text-sm">Host</p>
               </div>
             </div>
@@ -742,7 +842,9 @@ const ListingDetails = () => {
                   <button
                     onClick={handleFavoriteToggle}
                     className="p-2.5 rounded-full border border-gray-200 hover:border-olive-dark hover:bg-olive-light/10 transition-all duration-200 group"
-                    title={favorite ? "Remove from favorites" : "Add to favorites"}
+                    title={
+                      favorite ? "Remove from favorites" : "Add to favorites"
+                    }
                   >
                     <Heart
                       size={20}
@@ -760,7 +862,10 @@ const ListingDetails = () => {
                     className="p-2.5 rounded-full border border-gray-200 hover:border-olive-dark hover:bg-olive-light/10 transition-all duration-200 group"
                     title="Share Listing"
                   >
-                    <Share2 size={20} className="text-gray-500 group-hover:text-olive-dark transition-colors" />
+                    <Share2
+                      size={20}
+                      className="text-gray-500 group-hover:text-olive-dark transition-colors"
+                    />
                   </button>
                 </div>
               </div>
@@ -819,7 +924,7 @@ const ListingDetails = () => {
               >
                 <X size={20} />
               </button>
-              
+
               <div className="flex items-center gap-3 mb-6">
                 <div className="bg-olive-light/20 p-3 rounded-full">
                   <Share2 size={24} className="text-olive-dark" />
@@ -858,7 +963,9 @@ const ListingDetails = () => {
 
                 {/* Social Sharing */}
                 <div className="pt-4 border-t">
-                  <p className="text-sm text-gray-600 mb-3">Share on social media</p>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Share on social media
+                  </p>
                   <div className="flex gap-3">
                     <a
                       href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
@@ -924,7 +1031,9 @@ const ListingDetails = () => {
                     <div
                       key={msg.id}
                       className={`flex animate-[slideUp_0.3s_ease-out] ${
-                        msg.senderId === user.id ? "justify-end" : "justify-start"
+                        msg.senderId === user.id
+                          ? "justify-end"
+                          : "justify-start"
                       }`}
                       style={{ animationDelay: `${idx * 0.05}s` }}
                     >
@@ -935,7 +1044,9 @@ const ListingDetails = () => {
                             : "bg-white text-gray-800 rounded-bl-sm border border-gray-100"
                         }`}
                       >
-                        <p className="text-sm md:text-base break-words">{msg.text}</p>
+                        <p className="text-sm md:text-base break-words">
+                          {msg.text}
+                        </p>
                       </div>
                     </div>
                   ))
@@ -977,7 +1088,7 @@ const ListingDetails = () => {
               >
                 <X size={20} />
               </button>
-              
+
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-olive-light/20 p-2.5 rounded-full">
                   <Calendar size={20} className="text-olive-dark" />
@@ -1058,212 +1169,219 @@ const ListingDetails = () => {
 
         {/* Reservation Summary Modal - Enhanced */}
         {showSummary && (
-  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 px-4 animate-[fadeIn_0.2s_ease-out] py-10">
-    {/* 🧾 Main modal */}
-    <div
-      className="bg-white rounded-2xl p-6 md:p-8 w-full max-w-lg shadow-2xl relative animate-[slideUp_0.3s_ease-out]"
-      style={{
-        maxHeight: "85vh", // 🔹 slightly shorter so top never gets hidden
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {/* ❌ Close Button */}
-      <button
-        onClick={() => setShowSummary(false)}
-        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-all"
-      >
-        <X size={20} />
-      </button>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 px-4 animate-[fadeIn_0.2s_ease-out] py-10">
+            {/* 🧾 Main modal */}
+            <div
+              className="bg-white rounded-2xl p-6 md:p-8 w-full max-w-lg shadow-2xl relative animate-[slideUp_0.3s_ease-out]"
+              style={{
+                maxHeight: "85vh", // 🔹 slightly shorter so top never gets hidden
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {/* ❌ Close Button */}
+              <button
+                onClick={() => setShowSummary(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-all"
+              >
+                <X size={20} />
+              </button>
 
-      {/* Header */}
-      <h3 className="text-2xl font-bold text-olive-dark mb-6 pr-8">
-        Booking Summary
-      </h3>
+              {/* Header */}
+              <h3 className="text-2xl font-bold text-olive-dark mb-6 pr-8">
+                Booking Summary
+              </h3>
 
-      {/* Scrollable Content */}
-      <div
-        className="space-y-4 mb-6 overflow-y-auto pr-1"
-        style={{ maxHeight: "65vh" }} // 🔹 scroll only this part
-      >
-        {/* Guest Info */}
-        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Guest Name</span>
-            <span className="font-medium text-gray-800">{user.name}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Email</span>
-            <span className="font-medium text-gray-800">{user.email}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Number of Guests</span>
-            <span className="font-medium text-gray-800">{guestCount}</span>
-          </div>
-        </div>
+              {/* Scrollable Content */}
+              <div
+                className="space-y-4 mb-6 overflow-y-auto pr-1"
+                style={{ maxHeight: "65vh" }} // 🔹 scroll only this part
+              >
+                {/* Guest Info */}
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Guest Name</span>
+                    <span className="font-medium text-gray-800">
+                      {user.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Email</span>
+                    <span className="font-medium text-gray-800">
+                      {user.email}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Number of Guests</span>
+                    <span className="font-medium text-gray-800">
+                      {guestCount}
+                    </span>
+                  </div>
+                </div>
 
-        {/* Dates */}
-        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Check-in</span>
-            <span className="font-medium text-gray-800">
-              {format(startDate, "MMM dd, yyyy")}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Check-out</span>
-            <span className="font-medium text-gray-800">
-              {format(endDate, "MMM dd, yyyy")}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Number of Nights</span>
-            <span className="font-medium text-gray-800">{nights}</span>
-          </div>
-        </div>
+                {/* Dates */}
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Check-in</span>
+                    <span className="font-medium text-gray-800">
+                      {format(startDate, "MMM dd, yyyy")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Check-out</span>
+                    <span className="font-medium text-gray-800">
+                      {format(endDate, "MMM dd, yyyy")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Number of Nights</span>
+                    <span className="font-medium text-gray-800">{nights}</span>
+                  </div>
+                </div>
 
-        {/* Pricing */}
-        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Price per Night</span>
-            <span className="font-medium text-gray-800">
-              ₱{listing.price.toLocaleString()}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Subtotal</span>
-            <span className="font-medium text-gray-800">
-              ₱{subtotal.toLocaleString()}
-            </span>
-          </div>
-        </div>
+                {/* Pricing */}
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Price per Night</span>
+                    <span className="font-medium text-gray-800">
+                      ₱{listing.price.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium text-gray-800">
+                      ₱{subtotal.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
 
-        {/* Promo Code */}
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <Tag
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="text"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-              placeholder="Enter promo code"
-              className="w-full border border-gray-200 pl-10 pr-4 py-3 rounded-xl focus:ring-2 focus:ring-olive-dark focus:border-transparent outline-none transition-all text-sm"
-            />
-          </div>
-          <button
-            onClick={handleApplyPromo}
-            className="bg-olive-dark text-white px-5 py-3 rounded-xl hover:bg-olive-darker transition-all duration-200 font-medium whitespace-nowrap"
-          >
-            Apply
-          </button>
-        </div>
+                {/* Promo Code */}
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <Tag
+                      size={18}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    />
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      placeholder="Enter promo code"
+                      className="w-full border border-gray-200 pl-10 pr-4 py-3 rounded-xl focus:ring-2 focus:ring-olive-dark focus:border-transparent outline-none transition-all text-sm"
+                    />
+                  </div>
+                  <button
+                    onClick={handleApplyPromo}
+                    className="bg-olive-dark text-white px-5 py-3 rounded-xl hover:bg-olive-darker transition-all duration-200 font-medium whitespace-nowrap"
+                  >
+                    Apply
+                  </button>
+                </div>
 
-        {discount > 0 && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2 animate-[slideUp_0.3s_ease-out]">
-            <Check size={18} className="text-green-600" />
-            <span className="text-green-700 font-medium text-sm">
-              {discount}% discount applied!
-            </span>
+                {discount > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2 animate-[slideUp_0.3s_ease-out]">
+                    <Check size={18} className="text-green-600" />
+                    <span className="text-green-700 font-medium text-sm">
+                      {discount}% discount applied!
+                    </span>
+                  </div>
+                )}
+
+                {/* Total */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold text-gray-800">
+                      Total Amount
+                    </span>
+                    <span className="text-2xl font-bold text-olive-dark">
+                      ₱{total.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Button (sticky at bottom) */}
+              <div className="pt-3 border-t">
+                <PayPalButtons
+                  style={{ layout: "vertical", color: "gold" }}
+                  createOrder={(data, actions) => {
+                    return actions.order.create({
+                      purchase_units: [
+                        {
+                          amount: {
+                            currency_code: "PHP",
+                            value: total.toFixed(2),
+                          },
+                          description: listing.title,
+                        },
+                      ],
+                    });
+                  }}
+                  onApprove={async (data, actions) => {
+                    const order = await actions.order.capture();
+
+                    try {
+                      await addDoc(collection(db, "reservations"), {
+                        listingId: id,
+                        guestId: auth.currentUser.uid,
+                        hostId: listing.hostId,
+                        checkIn: format(startDate, "yyyy-MM-dd"),
+                        checkOut: format(endDate, "yyyy-MM-dd"),
+                        guests: guestCount,
+                        totalAmount: total,
+                        discountApplied: discount,
+                        paymentId: order.id,
+                        paymentStatus: order.status,
+                        status: "Confirmed",
+                        createdAt: new Date(),
+                      });
+
+                      const hostRef = doc(db, "users", listing.hostId);
+                      const hostSnap = await getDoc(hostRef);
+
+                      if (hostSnap.exists()) {
+                        const hostData = hostSnap.data();
+                        const currentEwallet = hostData.ewallet;
+                        await updateDoc(hostRef, {
+                          ewallet: currentEwallet + total,
+                        });
+                      }
+
+                      updateHostPoints(listing.hostId, 20);
+
+                      await axios.post(
+                        "https://custom-email-backend.onrender.com/send-reservation-receipt",
+                        {
+                          guestEmail: user.email,
+                          guestName: user.name,
+                          listingTitle: listing.title,
+                          hostName: hostName,
+                          checkIn: format(startDate, "MMM dd, yyyy"),
+                          checkOut: format(endDate, "MMM dd, yyyy"),
+                          totalAmount: total,
+                          guests: guestCount,
+                          reservationId: order.id,
+                          nights: nights,
+                        },
+                        { headers: { "Content-Type": "application/json" } }
+                      );
+
+                      alert("Reservation confirmed and payment successful!");
+                      setShowSummary(false);
+                    } catch (err) {
+                      console.error("Error saving reservation:", err);
+                      alert("Error saving reservation after payment.");
+                    }
+                  }}
+                  onError={(err) => {
+                    console.error("PayPal error:", err);
+                    alert("Payment failed. Please try again.");
+                  }}
+                />
+              </div>
+            </div>
           </div>
         )}
-
-        {/* Total */}
-        <div className="border-t pt-4">
-          <div className="flex justify-between items-center">
-            <span className="text-lg font-semibold text-gray-800">
-              Total Amount
-            </span>
-            <span className="text-2xl font-bold text-olive-dark">
-              ₱{total.toLocaleString()}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Payment Button (sticky at bottom) */}
-      <div className="pt-3 border-t">
-        <PayPalButtons
-          style={{ layout: "vertical", color: "gold" }}
-          createOrder={(data, actions) => {
-            return actions.order.create({
-              purchase_units: [
-                {
-                  amount: {
-                    currency_code: "PHP",
-                    value: total.toFixed(2),
-                  },
-                  description: listing.title,
-                },
-              ],
-            });
-          }}
-          onApprove={async (data, actions) => {
-            const order = await actions.order.capture();
-
-            try {
-              await addDoc(collection(db, "reservations"), {
-                listingId: id,
-                guestId: auth.currentUser.uid,
-                hostId: listing.hostId,
-                checkIn: format(startDate, "yyyy-MM-dd"),
-                checkOut: format(endDate, "yyyy-MM-dd"),
-                guests: guestCount,
-                totalAmount: total,
-                discountApplied: discount,
-                paymentId: order.id,
-                paymentStatus: order.status,
-                status: "Confirmed",
-                createdAt: new Date(),
-              });
-
-              const hostRef = doc(db, "users", listing.hostId);
-              const hostSnap = await getDoc(hostRef);
-
-              if (hostSnap.exists()) {
-                const hostData = hostSnap.data();
-                const currentEwallet = hostData.ewallet;
-                await updateDoc(hostRef, { ewallet: currentEwallet + total });
-              }
-
-              updateHostPoints(listing.hostId, 20);
-
-              await axios.post(
-                "https://custom-email-backend.onrender.com/send-reservation-receipt",
-                {
-                  guestEmail: user.email,
-                  guestName: user.name,
-                  listingTitle: listing.title,
-                  hostName: hostName,
-                  checkIn: format(startDate, "MMM dd, yyyy"),
-                  checkOut: format(endDate, "MMM dd, yyyy"),
-                  totalAmount: total,
-                  guests: guestCount,
-                  reservationId: order.id,
-                  nights: nights,
-                },
-                { headers: { "Content-Type": "application/json" } }
-              );
-
-              alert("Reservation confirmed and payment successful!");
-              setShowSummary(false);
-            } catch (err) {
-              console.error("Error saving reservation:", err);
-              alert("Error saving reservation after payment.");
-            }
-          }}
-          onError={(err) => {
-            console.error("PayPal error:", err);
-            alert("Payment failed. Please try again.");
-          }}
-        />
-      </div>
-    </div>
-  </div>
-)}
-
       </div>
 
       <Footer />

@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { db, auth } from "../../../firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import { Star, Calendar, Home, Wallet } from "lucide-react";
@@ -35,11 +42,10 @@ const Dashboard = ({ setActivePage }) => {
       }));
 
       // ✅ Count only completed bookings
-const completedBookings = reservationsData.filter(
-  (r) => r.status?.toLowerCase() === "completed"
-);
-setBookings(completedBookings);
-
+      const completedBookings = reservationsData.filter(
+        (r) => r.status?.toLowerCase() === "completed"
+      );
+      setBookings(completedBookings);
 
       const totalEarnings = reservationsData.reduce(
         (sum, r) => sum + (r.totalAmount || 0),
@@ -113,46 +119,49 @@ setBookings(completedBookings);
 
   const avgRating =
     reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
+      ? (
+          reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+        ).toFixed(1)
       : "0";
 
   const stats = [
-  {
-    value: bookings.length,
-    label: "Total Completed Bookings", // ✅ Updated label
-    icon: <Calendar className="w-5 h-5 text-white/90" />,
-    color: "from-blue-400 to-blue-600",
-  },
-  {
-    value: `₱${earnings.toLocaleString()}`,
-    label: "Total Earnings",
-    icon: <Wallet className="w-5 h-5 text-white/90" />,
-    color: "from-emerald-400 to-emerald-600",
-  },
-  {
-    value: listings.length,
-    label: "Active Listings",
-    icon: <Home className="w-5 h-5 text-white/90" />,
-    color: "from-orange-400 to-orange-600",
-  },
-  {
-    value: avgRating,
-    label: "Reviews",
-    icon: <Star className="w-5 h-5 text-white/90" />,
-    color: "from-yellow-400 to-yellow-600",
-  },
-];
-
+    {
+      value: bookings.length,
+      label: "Total Completed Bookings", // ✅ Updated label
+      icon: <Calendar className="w-5 h-5 text-white/90" />,
+      color: "from-blue-400 to-blue-600",
+    },
+    {
+      value: `₱${earnings.toLocaleString()}`,
+      label: "Total Earnings",
+      icon: <Wallet className="w-5 h-5 text-white/90" />,
+      color: "from-emerald-400 to-emerald-600",
+    },
+    {
+      value: listings.length,
+      label: "Active Listings",
+      icon: <Home className="w-5 h-5 text-white/90" />,
+      color: "from-orange-400 to-orange-600",
+    },
+    {
+      value: avgRating,
+      label: "Reviews",
+      icon: <Star className="w-5 h-5 text-white/90" />,
+      color: "from-yellow-400 to-yellow-600",
+    },
+  ];
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-              <div className="relative w-20 h-20 mb-6">
-                <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-t-olive rounded-full animate-spin"></div>
-              </div>
-              <p className="text-gray-600 text-lg animate-pulse">Loading your reservations...</p>
-            </div>
+        <div className="relative w-20 h-20 mb-6">
+          <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-t-olive rounded-full animate-spin"></div>
+        </div>
+        <p className="text-gray-600 text-lg animate-pulse">
+          Loading dashboard...
+        </p>
+      </div>
     );
   }
 
@@ -161,7 +170,9 @@ setBookings(completedBookings);
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-olive-dark">Welcome back, Host!</h1>
+          <h1 className="text-3xl font-bold text-olive-dark">
+            Welcome back, Host!
+          </h1>
           <p className="text-gray-600 mt-1 text-sm">
             Here’s an overview of your listings and bookings.
           </p>
@@ -185,75 +196,154 @@ setBookings(completedBookings);
       </div>
 
       {/* 🌿 Recent Reservations Section */}
-<div className="mt-12">
-  <div className="flex justify-between items-center mb-5">
-    <h2 className="text-3xl font-bold text-olive-dark tracking-tight">
-      Recent Reservations
-    </h2>
+      <div className="mt-12">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-3xl font-bold text-olive-dark tracking-tight mb-1">
+              Recent Reservations
+            </h2>
+            <p className="text-sm text-gray-600">
+              {recentReservations.length}{" "}
+              {recentReservations.length === 1 ? "reservation" : "reservations"}{" "}
+              in the last 30 days
+            </p>
+          </div>
 
-    <button
-      onClick={() => setActivePage("Reservations")}
-      className="text-[#3a3a2e] font-medium text-sm hover:text-[#565646] hover:underline transition-colors"
-    >
-      View All →
-    </button>
-  </div>
-
-  <div className="overflow-hidden rounded-2xl shadow-lg border border-white/40 bg-white/70 backdrop-blur-xl transition-all">
-    <table className="w-full text-sm md:text-base text-olive-dark">
-      <thead>
-        <tr className="bg-gradient-to-r from-white/80 to-white/60 text-olive-dark font-semibold uppercase tracking-wide text-xs md:text-sm">
-          <th className="py-4 px-5 text-left">Guest</th>
-          <th className="py-4 px-5 text-left">Property</th>
-          <th className="py-4 px-5 text-left">Status</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {recentReservations.length > 0 ? (
-          recentReservations.map((r, i) => (
-            <tr
-              key={r.id}
-              className={`transition-colors duration-200 ${
-                i % 2 === 0
-                  ? "bg-white/60 hover:bg-white/80"
-                  : "bg-white/50 hover:bg-white/70"
-              }`}
+          <button
+            onClick={() => setActivePage("Reservations")}
+            className="flex items-center gap-2 px-4 py-2.5 text-[#3a3a2e] font-medium text-sm bg-white/80 hover:bg-white border border-white/60 rounded-xl hover:shadow-md transition-all duration-200 backdrop-blur-sm"
+          >
+            <span>View All</span>
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <td className="py-4 px-5 font-medium text-olive-dark">
-                {r.guestName}
-              </td>
-              <td className="py-4 px-5 text-[#56564d]">{r.listingName}</td>
-              <td className="py-4 px-5">
-                <span
-                  className={`inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-medium shadow-sm ${
-                    r.status?.toLowerCase() === "confirmed"
-                      ? "bg-green-100 text-green-700"
-                      : r.status?.toLowerCase() === "completed"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {r.status}
-                </span>
-              </td>
-            </tr>
-          ))
-        ) : (
-          <tr>
-            <td
-              colSpan="3"
-              className="text-center py-6 text-gray-500 italic tracking-wide"
-            >
-              No recent reservations found.
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-</div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        </div>
 
+        <div className="overflow-hidden rounded-2xl shadow-xl border border-white/50 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-xl">
+          <table className="w-full text-sm md:text-base">
+            <thead>
+              <tr className="bg-gradient-to-r from-olive-dark/5 to-olive-dark/10 border-b border-gray-200/50">
+                <th className="py-5 px-6 text-left text-xs font-bold text-olive-dark/70 uppercase tracking-wider">
+                  Guest Information
+                </th>
+                <th className="py-5 px-6 text-left text-xs font-bold text-olive-dark/70 uppercase tracking-wider">
+                  Property
+                </th>
+                <th className="py-5 px-6 text-left text-xs font-bold text-olive-dark/70 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-gray-200/30">
+              {recentReservations.length > 0 ? (
+                recentReservations.map((r, i) => (
+                  <tr
+                    key={r.id}
+                    className="group transition-all duration-200 hover:bg-white/90 hover:shadow-sm"
+                  >
+                    <td className="py-5 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-olive-dark/20 to-olive-dark/10 flex items-center justify-center text-olive-dark font-semibold text-sm shadow-sm">
+                          {r.guestName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-olive-dark group-hover:text-olive-dark/80 transition-colors">
+                            {r.guestName}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-5 px-6">
+                      <div className="flex items-center gap-2">
+                        <svg
+                          className="w-4 h-4 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                          />
+                        </svg>
+                        <span className="text-[#56564d] font-medium">
+                          {r.listingName}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-5 px-6">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all duration-200 ${
+                          r.status?.toLowerCase() === "confirmed"
+                            ? "bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200/50"
+                            : r.status?.toLowerCase() === "completed"
+                            ? "bg-gradient-to-r from-blue-50 to-sky-50 text-blue-700 border border-blue-200/50"
+                            : "bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border border-red-200/50"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            r.status?.toLowerCase() === "confirmed"
+                              ? "bg-green-500"
+                              : r.status?.toLowerCase() === "completed"
+                              ? "bg-blue-500"
+                              : "bg-red-500"
+                          }`}
+                        />
+                        {r.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="3" className="text-center py-16">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                        <svg
+                          className="w-8 h-8 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-gray-600 font-medium">
+                          No recent reservations
+                        </p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          New reservations will appear here
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Most Popular Listings */}
       <div className="mt-12">
@@ -318,8 +408,6 @@ setBookings(completedBookings);
           </p>
         )}
       </div>
-
-
     </div>
   );
 };

@@ -100,7 +100,7 @@ const HostNav = ({ user, toggleSidebar }) => {
       case "Diamond":
         return "bg-cyan-400";
       case "Hiraya Host":
-        return "bg-purple-500";
+        return "bg-emerald-500";
       default:
         return "bg-amber-600";
     }

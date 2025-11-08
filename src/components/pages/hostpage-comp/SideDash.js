@@ -6,6 +6,7 @@ const SideDash = ({ setActivePage, isOpen, toggleSidebar, activePage }) => {
     { label: "My Listings" },
     { label: "Reservations" },
     { label: "Messages" },
+    { label: "Points & Rewards" },
     { label: "Earnings" },
     { label: "Settings" },
   ];

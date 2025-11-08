@@ -15,6 +15,8 @@ import GuestProfile from './components/pages/GuestProfile'
 import GuestMessages from './components/pages/GuestMessages'
 import ExperiencesDetails from './components/pages/ExperiencesDetails';
 import ServicesDetails from './components/pages/ServicesDetails';
+import WishlistPage from './components/pages/WishlistPage'
+import AdminPage from './components/pages/AdminPage'
 
 function App() {
   const router = createBrowserRouter([
@@ -41,6 +43,8 @@ function App() {
     { path: "/experiences/:id", element: <ExperiencesDetails /> },
     { path: "/services/:id", element: <ServicesDetails /> },
     { path: "/messages", element: <GuestMessages /> },
+    { path: "/wishlist", element: <WishlistPage /> },
+    { path: "/adminpage", element: <AdminPage/> },
     { path: "*", element: <NotFound /> },
   ]);
 

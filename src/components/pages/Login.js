@@ -45,6 +45,7 @@ const Login = () => {
 
         if (userData.role === "guest") navigate("/");
         else if (userData.role === "host") navigate("/hostpage");
+        else if (userData.role === "admin") navigate("/adminpage");
         else alert("Unknown user role. Contact support.");
       } else {
         alert("Please verify your email before logging in.");

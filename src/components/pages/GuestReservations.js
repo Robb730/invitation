@@ -269,8 +269,8 @@ const GuestReservations = () => {
               <h2 className="text-2xl font-semibold text-gray-800 mb-2">No reservations yet</h2>
               <p className="text-gray-600 text-lg mb-6">Start exploring and book your next adventure!</p>
               <button
-                onClick={() => navigate("/homes")}
-                className="bg-blue-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-blue-700 transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5"
+                onClick={() => navigate("/")}
+                className="bg-olive text-white px-8 py-3 rounded-full font-semibold hover:bg-olive-dark transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5"
               >
                 Browse Listings
               </button>
