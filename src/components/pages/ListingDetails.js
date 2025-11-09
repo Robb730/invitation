@@ -45,7 +45,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import markerIcon from "./hostpage-comp/images/marker_olive.png";
 import { updateHostPoints } from "../../utils/pointSystem";
-import { addNotification } from "../../utils/notificationSystem"
+import { addNotification } from "../../utils/notificationSystem";
 
 const customMarker = L.icon({
   iconUrl: markerIcon,
@@ -76,6 +76,9 @@ const ListingDetails = () => {
   const [copiedLink, setCopiedLink] = useState(false);
 
   const [hostTier, setHostTier] = useState("Bronze");
+
+  const [validCodes, setValidCodes] = useState([]);
+  const [matchedCode, setMatchedCode] = useState(false);
 
   const [bookedDates, setBookedDates] = useState([]);
   const [dateRange, setDateRange] = useState([
@@ -289,6 +292,75 @@ const ListingDetails = () => {
     fetchBookedDates();
   }, [id]);
 
+  useEffect(() => {
+  const fetchRewardCodes = async () => {
+    try {
+      const q = query(
+        collection(db, "rewards"),
+        where("type", "==", "reservation-discount")
+      );
+      const snap = await getDocs(q);
+
+      const codes = snap.docs.flatMap((docSnap) => {
+        const data = docSnap.data();
+        return (data.codes || [])
+          .filter(c => !c.used) // only unused codes
+          .map(c => ({
+            ...c,
+            code: c.code.toLowerCase(),
+            discount: data.discount, // attach parent discount
+            rewardId: docSnap.id,
+          }));
+      });
+
+      setValidCodes(codes);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  fetchRewardCodes();
+}, []);
+
+
+// This function should be called after the reservation/payment is confirmed
+const markCodeAsUsed = async (matchedCodeObj) => {
+  if (!matchedCodeObj) return;
+
+  try {
+    const docRef = doc(db, "rewards", matchedCodeObj.rewardId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) return;
+
+    const data = docSnap.data();
+
+    // Find the code in the codes array
+    const codeIndex = data.codes.findIndex(
+      (c) => c.code.toLowerCase() === matchedCodeObj.code
+    );
+
+    if (codeIndex === -1) return;
+
+    const updatedCodes = [...data.codes];
+    updatedCodes[codeIndex] = {
+      ...updatedCodes[codeIndex],
+      used: true,
+    };
+
+    await updateDoc(docRef, { codes: updatedCodes });
+
+    // Update local validCodes state to remove the used code
+    setValidCodes((prev) =>
+      prev.filter((c) => c.code.toLowerCase() !== matchedCodeObj.code)
+    );
+
+    console.log("Promo code marked as used.");
+  } catch (error) {
+    console.error("Failed to mark promo code as used:", error);
+  }
+};
+
   // Get user
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -351,12 +423,21 @@ const ListingDetails = () => {
   };
 
   const handleApplyPromo = () => {
+    const matchedCodeObj = validCodes.find(c => c.code === promoCode.toLowerCase());
+    
+
     if (
-      listing.promoCode &&
-      listing.promoCode.toLowerCase() === promoCode.toLowerCase()
+      (listing.promoCode &&
+        listing.promoCode.toLowerCase() === promoCode.toLowerCase()) ||
+      matchedCodeObj
     ) {
-      setDiscount(listing.discountPercent || 10);
-      alert(`Promo code applied! ${listing.discountPercent || 10}% discount`);
+      console.log(matchedCodeObj.discount);
+
+      const appliedDiscount = matchedCodeObj ? matchedCodeObj.discount : listing.discountPercent || 10;
+        
+      setDiscount(appliedDiscount);
+      setMatchedCode(matchedCodeObj);
+      alert(`Promo code applied! ${appliedDiscount || 10}% discount`);
     } else {
       setDiscount(0);
       alert("Invalid promo code for this listing.");
@@ -1367,7 +1448,18 @@ const ListingDetails = () => {
                         { headers: { "Content-Type": "application/json" } }
                       );
 
-                      addNotification("Reservation", id, listing.title, auth.currentUser.uid, listing.hostId, 20);
+                      addNotification(
+                        "Reservation",
+                        id,
+                        listing.title,
+                        auth.currentUser.uid,
+                        listing.hostId,
+                        20
+                      );
+
+                      if (matchedCode) {
+                        await markCodeAsUsed(matchedCode)
+                      }
 
                       alert("Reservation confirmed and payment successful!");
                       setShowSummary(false);

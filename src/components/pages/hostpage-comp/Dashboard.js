@@ -81,7 +81,7 @@ const Dashboard = ({ setActivePage }) => {
             const guestDoc = await getDoc(doc(db, "users", r.guestId));
             if (guestDoc.exists()) {
               const guestData = guestDoc.data();
-              guestName = guestData.name || "Guest";
+              guestName = guestData.name || guestData.fullName || "Guest";
             }
           }
           if (r.listingId) {
