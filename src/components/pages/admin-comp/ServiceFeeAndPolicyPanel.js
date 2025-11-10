@@ -84,7 +84,7 @@ const ServiceFeeAndPolicyPanel = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 py-8 px-4 sm:py-12">
+    <div className="min-h-screen bg-white rounded-3xl py-8 px-4 sm:py-12">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8 sm:mb-12">

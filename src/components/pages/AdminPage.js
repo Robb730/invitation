@@ -28,6 +28,10 @@ import {
 import RewardsAdminPanel from "./admin-comp/RewardsAdminPanel";
 import PaymentCashoutsPanel from "./admin-comp/PaymentCashoutsPanel";
 import ServiceFeePanel from "./admin-comp/ServiceFeeAndPolicyPanel";
+import { signOut } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
+
+
 
 const AdminPage = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -44,20 +48,34 @@ const AdminPage = () => {
 
   const auth = getAuth();
 
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const navigate = useNavigate();
+
+
+
   // 🔹 Load admin data
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
-        setAdminData(null);
-        setLoading(false);
-        return;
-      }
+    navigate("/"); // redirect if not logged in
+    return;
+  }
 
       try {
         const docRef = doc(db, "users", currentUser.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setAdminData({ id: docSnap.id, ...docSnap.data() });
+          const userData = { id: docSnap.id, ...docSnap.data() };
+          setAdminData(userData);
+
+          if (userData.role?.toLowerCase() === "guest") {
+        navigate("/"); // redirect to home or login
+        return;
+      } else if (userData.role?.toLowerCase() === "host") {
+        navigate("/hostpage");
+        return;
+      }
         } else {
           console.warn("No admin document found in Firestore for this user.");
         }
@@ -69,9 +87,20 @@ const AdminPage = () => {
     });
 
     return () => unsubscribe();
-  }, [auth]);
+  }, [auth, navigate]);
 
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+  const handleClickOutside = (e) => {
+    if (!e.target.closest(".profile-dropdown")) {
+      setShowLogoutModal(false);
+    }
+  };
+  document.addEventListener("click", handleClickOutside);
+  return () => document.removeEventListener("click", handleClickOutside);
+}, []);
+
 
   // Filter reservations in real-time
   const filteredReservations = allReservations.filter((r) => {
@@ -969,62 +998,101 @@ const AdminPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header + Tabs */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg flex items-center justify-center">
-              <img
-                src={logo}
-                alt="Logo"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-olive to-olive-darker bg-clip-text text-transparent">
-                KuboHub <span className="font-thin">Admin</span>
-              </h1>
-              <p className="text-xs text-gray-500">Manage your platform</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-              <div className="text-right">
-                <p className="text-sm font-semibold">
-                  {adminData?.name || "Admin User"}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {adminData?.email || "admin@platform.com"}
-                </p>
-              </div>
-              <img
-                src={adminData.profilePic}
-                alt="icon"
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            </div>
-          </div>
+  {/* ✅ Header + Tabs */}
+  <header className="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
+    {/* ✅ Top Header */}
+    <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-center sm:items-center justify-between gap-3 sm:gap-0">
+      {/* Logo + Title */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-md flex items-center justify-center shrink-0">
+          <img src={logo} alt="Logo" className="w-full h-full object-cover" />
         </div>
-
-        <div className="px-6 flex gap-1 overflow-x-auto">
-          {["dashboard", "reservations", "reviews", "rewards", "service fee & policy", "payment cashouts"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-medium text-sm transition-all whitespace-nowrap ${
-                activeTab === tab
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+        <div className="flex flex-col">
+          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-olive to-olive-darker bg-clip-text text-transparent leading-tight">
+            KuboHub <span className="font-thin">Admin</span>
+          </h1>
+          <p className="text-[11px] sm:text-xs text-gray-500">
+            Manage your platform
+          </p>
         </div>
-      </header>
+      </div>
 
-      <main className="p-6 max-w-7xl mx-auto">{renderTabContent()}</main>
+      {/* ✅ Admin Info */}
+      <div className="flex items-center gap-3 pl-0 sm:pl-4 border-t sm:border-t-0 sm:border-l border-gray-200 w-full sm:w-auto justify-between sm:justify-end pt-3 sm:pt-0">
+        <div className="text-left sm:text-right">
+          <p className="text-sm sm:text-base font-semibold truncate max-w-[120px] sm:max-w-[180px]">
+            {adminData?.name || "Admin User"}
+          </p>
+          <p className="text-xs text-gray-500 truncate max-w-[160px] sm:max-w-[200px]">
+            {adminData?.email || "admin@platform.com"}
+          </p>
+        </div>
+        <div className="relative profile-dropdown">
+  {/* Profile Picture */}
+  <img
+    src={adminData?.profilePic}
+    alt="Admin"
+    onClick={() => setShowLogoutModal((prev) => !prev)}
+    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover cursor-pointer border border-gray-200 hover:ring-2 hover:ring-olive transition-all"
+  />
+
+  {/* Dropdown Modal */}
+  {showLogoutModal && (
+    <div
+      className="absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50"
+      onMouseLeave={() => setShowLogoutModal(false)}
+    >
+      <button
+        onClick={async () => {
+          try {
+            await signOut(auth);
+            window.location.href = "/"; // redirect to login or home
+          } catch (error) {
+            console.error("Logout error:", error);
+          }
+        }}
+        className="w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 text-left font-medium transition-all"
+      >
+        Logout
+      </button>
     </div>
+  )}
+</div>
+
+      </div>
+    </div>
+
+    {/* ✅ Tabs Navigation */}
+    <div className="px-2 sm:px-6 flex gap-1 overflow-x-auto scrollbar-hide">
+      {[
+        "dashboard",
+        "reservations",
+        "reviews",
+        "rewards",
+        "service fee & policy",
+        "payment cashouts",
+      ].map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setActiveTab(tab)}
+          className={`px-4 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm transition-all whitespace-nowrap rounded-t-lg ${
+            activeTab === tab
+              ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+          }`}
+        >
+          {tab.charAt(0).toUpperCase() + tab.slice(1)}
+        </button>
+      ))}
+    </div>
+  </header>
+
+  {/* ✅ Main Content */}
+  <main className="p-4 sm:p-6 max-w-7xl mx-auto">
+    {renderTabContent()}
+  </main>
+</div>
+
   );
 };
 

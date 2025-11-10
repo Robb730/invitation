@@ -1,7 +1,24 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { collection, getDocs, query, where, doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { db, auth } from "../../../firebaseConfig";
-import { Wallet, CreditCard, DollarSign } from "lucide-react";
+import {
+  DollarSign,
+  Wallet,
+  CreditCard,
+  TrendingUp,
+  Download,
+  Clock,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
+import { cashoutRequest } from "../../../utils/cashoutSystem";
 
 const Earnings = () => {
   const [totalEarnings, setTotalEarnings] = useState(0);
@@ -11,12 +28,18 @@ const Earnings = () => {
   const [paypalEmail, setPaypalEmail] = useState("");
   const [cashoutAmount, setCashoutAmount] = useState("");
 
+  const [cashouts, setCashouts] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
   // Fetch total earnings
   const fetchTotalEarnings = useCallback(async () => {
     if (!auth.currentUser) return;
     try {
       const reservationsRef = collection(db, "reservations");
-      const q = query(reservationsRef, where("hostId", "==", auth.currentUser.uid));
+      const q = query(
+        reservationsRef,
+        where("hostId", "==", auth.currentUser.uid)
+      );
       const snapshot = await getDocs(q);
 
       let sum = 0;
@@ -44,11 +67,45 @@ const Earnings = () => {
       console.error("Error fetching wallet balance:", err);
     }
   }, []);
+  // Fetch cashout history
+  // Fetch cashout history
+  const fetchCashoutHistory = useCallback(async () => {
+    if (!auth.currentUser) return;
+    setHistoryLoading(true);
+    try {
+      const cashoutsRef = collection(db, "cashouts");
+      const q = query(cashoutsRef, where("hostId", "==", auth.currentUser.uid));
+      const snapshot = await getDocs(q);
+
+      const list = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      }));
+
+      // Sort by createdAt **most recent first**
+      list.sort((a, b) => {
+        const dateA = a.createdAt?.toDate
+          ? a.createdAt.toDate().getTime()
+          : new Date(a.createdAt).getTime();
+        const dateB = b.createdAt?.toDate
+          ? b.createdAt.toDate().getTime()
+          : new Date(b.createdAt).getTime();
+        return dateB - dateA; // reverse order
+      });
+
+      setCashouts(list);
+    } catch (err) {
+      console.error("Error fetching cashout history:", err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchTotalEarnings();
     fetchWalletBalance();
-  }, [fetchTotalEarnings, fetchWalletBalance]);
+    fetchCashoutHistory();
+  }, [fetchTotalEarnings, fetchWalletBalance, fetchCashoutHistory]);
 
   // Open modal
   const handleCashOutClick = () => {
@@ -76,193 +133,326 @@ const Earnings = () => {
     }
 
     setLoading(true);
-    try {
-      const response = await fetch("https://custom-email-backend.onrender.com/api/payout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hostId: auth.currentUser.uid,
-          amount,
-          paypalEmail,
-        }),
-      });
 
-      const data = await response.json();
+    cashoutRequest(auth.currentUser.uid, amount, paypalEmail);
 
-      if (data.success) {
-        alert("✅ Withdrawal successful! Funds sent to your PayPal account.");
-        await updateDoc(doc(db, "users", auth.currentUser.uid), {
-          ewallet: walletBalance - amount,
-        });
-        setWalletBalance(walletBalance - amount);
-        setShowModal(false);
-        setPaypalEmail("");
-        setCashoutAmount("");
-      } else {
-        alert("❌ Withdrawal failed: " + data.message);
-      }
-    } catch (error) {
-      console.error("Cash out error:", error);
-      alert("Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
+    alert("Cashout request sent.");
+
+    setCashoutAmount("");
+    setPaypalEmail("");
+
+    setLoading(false);
+
+    setShowModal(false);
   };
 
   return (
-    <div className="bg-white/80 backdrop-blur-lg border border-white/30 rounded-3xl shadow-md p-8 w-full">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h2 className="text-3xl font-bold text-olive-dark mb-2 tracking-tight">
-          Earnings Overview
-        </h2>
-        <p className="text-olive-dark/70 text-sm md:text-base">
-          Track your total earnings and manage PayPal transfers here.
-        </p>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid sm:grid-cols-2 gap-5">
-        {/* Total Earnings */}
-        <div className="bg-beige p-6 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm hover:shadow-md transition-all duration-300 border border-white/40">
-          <div className="p-3 bg-olive/10 rounded-full mb-3">
-            <DollarSign className="w-6 h-6 text-olive-dark" />
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 rounded-3xl to-teal-50 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-gradient-to-br from-olive to-olive-dark rounded-xl shadow-lg">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-olive to-olive-darker bg-clip-text text-transparent">
+              Earnings
+            </h1>
           </div>
-          <h3 className="text-sm text-olive-dark/70 font-medium mb-1">
-            Total Earnings
-          </h3>
-          <p className="text-3xl font-bold text-olive-dark">
-            ₱{totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          <p className="text-gray-600 text-lg ml-14">
+            Track your income and manage cashouts seamlessly
           </p>
         </div>
 
-        {/* Wallet Balance */}
-        <div className="bg-beige p-6 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm hover:shadow-md transition-all duration-300 border border-white/40">
-          <div className="p-3 bg-olive/10 rounded-full mb-3">
-            <Wallet className="w-6 h-6 text-olive-dark" />
-          </div>
-          <h3 className="text-sm text-olive-dark/70 font-medium mb-1">
-            Current E-Wallet Balance
-          </h3>
-          <p className="text-3xl font-bold text-olive-dark">
-            ₱{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-      </div>
-
-      {/* Cash Out Button */}
-      <div className="mt-8 text-center">
-        <button
-          onClick={handleCashOutClick}
-          disabled={loading}
-          className={`px-8 py-3 rounded-xl text-white text-lg font-medium shadow-md transition-all duration-300 ${
-            loading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-olive-dark hover:bg-olive hover:shadow-lg"
-          }`}
-        >
-          {loading ? "Processing..." : "Cash Out"}
-        </button>
-      </div>
-
-      {/* PayPal Email + Amount Modal */}
-      {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-[9999] ">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-[90%] max-w-md border border-white/40 relative mt-20">
-            {/* Close button */}
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-olive-dark/70 hover:text-olive-dark transition"
-            >
-              ✕
-            </button>
-
-            {/* Header */}
-            <div className="flex flex-col items-center text-center mb-6">
-              <div className="p-3 bg-beige rounded-full mb-3">
-                <CreditCard className="text-olive-dark w-6 h-6" />
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Total Earnings Card */}
+          <div className="group relative bg-gradient-to-br from-white to-green-50 rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 border border-green-100 overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-200/30 to-emerald-200/30 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-4 bg-gradient-to-br from-olive to-olive-darker rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <DollarSign className="w-8 h-8 text-white" />
+                </div>
+                <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                  All Time
+                </div>
               </div>
-              <h3 className="text-xl font-semibold text-olive-dark mb-1">
-                Withdraw Funds
+              <h3 className="text-sm font-medium text-gray-600 mb-2 uppercase tracking-wide">
+                Total Earnings
               </h3>
-              <p className="text-olive-dark/70 text-sm">
-                Enter your PayPal email and amount to withdraw (₱500 minimum).
+              <p className="text-4xl font-bold text-gray-900 mb-1">
+                ₱
+                {totalEarnings.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
               </p>
             </div>
+          </div>
 
-            {/* Amount Input */}
-            <div className="mb-5">
-              <label className="block text-sm font-medium text-olive-dark mb-2">
-                Amount to Cash Out
-              </label>
-              <input
-                type="number"
-                placeholder="₱500 minimum"
-                min="500"
-                value={cashoutAmount}
-                onChange={(e) => setCashoutAmount(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-olive-dark/60"
-              />
-
-              {/* Suggested buttons */}
-              <div className="flex justify-center gap-3 mt-3">
-                {[500, 1000, 10000].map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => setCashoutAmount(amt)}
-                    className="px-4 py-2 bg-beige text-olive-dark font-medium rounded-lg hover:bg-olive-dark hover:text-white transition"
-                  >
-                    ₱{amt.toLocaleString()}
-                  </button>
-                ))}
+          {/* Wallet Balance Card */}
+          <div className="group relative bg-gradient-to-br from-white to-emerald-50 rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 border border-emerald-100 overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-200/30 to-teal-200/30 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-4 bg-gradient-to-br from-olive to-olive-darker rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <Wallet className="w-8 h-8 text-white" />
+                </div>
+                <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
+                  Available
+                </div>
               </div>
-            </div>
-
-            {/* Email Input */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-olive-dark mb-2">
-                PayPal Email
-              </label>
-              <input
-                type="email"
-                placeholder="yourname@example.com"
-                value={paypalEmail}
-                onChange={(e) => setPaypalEmail(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-olive-dark/60"
-              />
-            </div>
-
-            {/* Buttons */}
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-5 py-2 text-olive-dark/70 hover:text-olive-dark font-medium transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCashOut}
-                disabled={loading}
-                className={`px-6 py-2 rounded-lg text-white font-medium transition ${
-                  loading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-olive-dark hover:bg-olive"
-                }`}
-              >
-                {loading ? "Processing..." : "Confirm"}
-              </button>
+              <h3 className="text-sm font-medium text-gray-600 mb-2 uppercase tracking-wide">
+                Current Balance
+              </h3>
+              <p className="text-4xl font-bold text-gray-900 mb-1">
+                ₱
+                {walletBalance.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
+              </p>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Empty Message */}
-      {totalEarnings === 0 && (
-        <p className="mt-6 text-olive-dark/60 text-center italic">
-          No transactions yet.
-        </p>
-      )}
+        {/* Cash Out Button */}
+        <div className="mb-12 flex justify-center">
+          <button
+            onClick={handleCashOutClick}
+            disabled={loading}
+            className={`group relative px-10 py-4 rounded-2xl text-white text-lg font-semibold shadow-xl transition-all duration-300 overflow-hidden ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-olive hover:from-olive hover:to-olive-darker hover:shadow-2xl hover:scale-105 active:scale-95"
+            }`}
+          >
+            <span className="relative z-10 flex items-center gap-3">
+              <Download className="w-5 h-5" />
+              {loading ? "Processing..." : "Withdraw to PayPal"}
+            </span>
+            {!loading && (
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+            )}
+          </button>
+        </div>
+
+        {/* Cashout History */}
+        <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl">
+              <Clock className="w-6 h-6 text-green-700" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Withdrawal History
+            </h2>
+          </div>
+
+          {historyLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-200 border-t-green-600 mx-auto"></div>
+              <p className="text-gray-500 mt-4">Loading history...</p>
+            </div>
+          ) : cashouts.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Download className="w-10 h-10 text-gray-400" />
+              </div>
+              <p className="text-gray-500 text-lg">No withdrawals yet</p>
+              <p className="text-gray-400 text-sm mt-1">
+                Your withdrawal history will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-gray-200">
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-gradient-to-r from-olive to-olive-darker">
+                    <tr>
+                      <th className="py-4 px-6 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                        ID
+                      </th>
+                      <th className="py-4 px-6 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                        PayPal Email
+                      </th>
+                      <th className="py-4 px-6 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="py-4 px-6 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="py-4 px-6 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                        Date
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {cashouts.map((c, idx) => (
+                      <tr
+                        key={c.id}
+                        className="hover:bg-gray-50 transition-colors duration-150"
+                      >
+                        <td className="py-4 px-6">
+                          <span className="font-mono text-sm font-semibold text-gray-900 bg-gray-100 px-3 py-1 rounded-lg">
+                            {c.id}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-gray-700">
+                          {c.paypalEmail}
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className="font-bold text-lg text-gray-900">
+                            ₱{c.amount.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold ${
+                              c.status === "Pending"
+                                ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                : c.status === "Approved"
+                                ? "bg-green-100 text-green-800 border border-green-200"
+                                : "bg-red-100 text-red-800 border border-red-200"
+                            }`}
+                          >
+                            {c.status === "Pending" && (
+                              <Clock className="w-3.5 h-3.5" />
+                            )}
+                            {c.status === "Approved" && (
+                              <CheckCircle className="w-3.5 h-3.5" />
+                            )}
+                            {c.status === "Rejected" && (
+                              <XCircle className="w-3.5 h-3.5" />
+                            )}
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-center text-sm text-gray-600">
+                          {c.createdAt?.toDate
+                            ? c.createdAt.toDate().toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : new Date(c.createdAt).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                }
+                              )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* PayPal Modal */}
+        {showModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg transform transition-all animate-in zoom-in-95 duration-300">
+              {/* Modal Header */}
+              <div className="relative bg-gradient-to-r from-olive to-olive-darker rounded-t-3xl p-8 text-white">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
+                >
+                  <span className="text-2xl font-light">×</span>
+                </button>
+                <div className="flex items-center gap-4">
+                  <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl">
+                    <CreditCard className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold mb-1">Withdraw Funds</h3>
+                    <p className="text-green-100 text-sm">
+                      Transfer to your PayPal account
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-8">
+                {/* Amount Input */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Withdrawal Amount
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg font-semibold">
+                      ₱
+                    </span>
+                    <input
+                      type="number"
+                      id="amount"
+                      placeholder="500 minimum"
+                      min="500"
+                      value={cashoutAmount}
+                      onChange={(e) => setCashoutAmount(e.target.value)}
+                      className="w-full pl-10 pr-4 py-4 border-2 border-gray-200 rounded-xl text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                    />
+                  </div>
+
+                  {/* Quick Amount Buttons */}
+                  <div className="flex gap-3 mt-4">
+                    {[500, 1000, 10000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setCashoutAmount(amt)}
+                        className="flex-1 px-4 py-3 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-green-50 hover:to-emerald-50 border-2 border-gray-200 hover:border-green-300 text-gray-700 hover:text-green-700 font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
+                      >
+                        ₱{amt.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Email Input */}
+                <div className="mb-8">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    PayPal Email Address
+                  </label>
+                  <input
+                    type="email"
+                    id="paypalEmail"
+                    placeholder="yourname@example.com"
+                    value={paypalEmail}
+                    onChange={(e) => setPaypalEmail(e.target.value)}
+                    className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 px-6 py-4 text-gray-700 font-semibold border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCashOut}
+                    disabled={loading}
+                    className={`flex-1 px-6 py-4 rounded-xl text-white font-semibold transition-all duration-200 ${
+                      loading
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 hover:scale-105 active:scale-95 shadow-lg"
+                    }`}
+                  >
+                    {loading ? "Processing..." : "Confirm Withdrawal"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

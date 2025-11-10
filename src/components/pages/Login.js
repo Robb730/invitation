@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
+  //GoogleAuthProvider,
+  //signInWithPopup,
 } from "firebase/auth";
 import { auth } from "../../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
@@ -17,20 +17,20 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showAnimation, setShowAnimation] = useState(false);
   const navigate = useNavigate();
-  const googleProvider = new GoogleAuthProvider();
+  //const googleProvider = new GoogleAuthProvider();
 
   useEffect(() => {
     setShowAnimation(true);
   }, []);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-      navigate("/");
-    } catch (error) {
-      alert(error.message);
-    }
-  };
+  // const handleGoogleSignIn = async () => {
+  //   try {
+  //     await signInWithPopup(auth, googleProvider);
+  //     navigate("/");
+  //   } catch (error) {
+  //     alert(error.message);
+  //   }
+  // };
 
   const handleLogin = async () => {
     try {
@@ -60,7 +60,7 @@ const Login = () => {
       className="min-h-screen flex flex-col md:flex-row bg-cover bg-center"
       style={{ backgroundImage: `url(${bg})` }}
     >
-      {/* LEFT SIDE */}
+      {/* LEFT SIDE - Hidden on mobile, shown on md+ */}
       <div className="hidden md:flex flex-col justify-center items-center w-full md:w-1/2 bg-gradient-to-br from-olive-dark/90 to-black/70 text-beige backdrop-blur-md p-10">
         <div className="text-center px-6">
           <img src={logo} alt="KuboHub Logo" className="w-24 mx-auto mb-6" />
@@ -69,82 +69,70 @@ const Login = () => {
             <SplitText
               text="Welcome Back 🌿"
               className="text-5xl font-extrabold mb-4"
-              delay={100}
-              duration={0.6}
-              ease="power3.out"
-              splitType="chars"
-              from={{ opacity: 0, y: 40 }}
-              to={{ opacity: 1, y: 0 }}
             />
           )}
 
           <p className="text-beige/90 max-w-md mx-auto leading-relaxed text-lg">
-            Step into comfort again. Sign in to explore new stays, experiences, and hosts across the islands — with the cozy touch of KuboHub.
-            with <span className="text-olive font-semibold">KuboHub</span>.
+            Step into comfort again. Sign in to explore new stays, experiences, and hosts across the islands — with the cozy touch of{' '}
+            <span className="text-olive font-semibold">KuboHub</span>.
           </p>
         </div>
       </div>
 
-      {/* RIGHT SIDE */}
-      <div className="flex justify-center items-center w-full md:w-1/2 bg-gradient-to-b from-beige/90 via-white/90 to-beige/80 backdrop-blur-xl p-6 sm:p-10">
+      {/* RIGHT SIDE - Full width on mobile */}
+      <div className="flex justify-center items-center w-full md:w-1/2 bg-gradient-to-b from-beige/90 via-white/90 to-beige/80 backdrop-blur-xl p-4 sm:p-6 md:p-10 min-h-screen md:min-h-0">
         <div className="bg-white rounded-3xl border border-olive/20 shadow-xl sm:shadow-2xl p-6 sm:p-8 w-full max-w-sm sm:max-w-md transition-all duration-500 hover:shadow-olive/20">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-olive-dark mb-6">
+          
+          {/* Mobile-only logo and welcome text */}
+          <div className="md:hidden text-center mb-6">
+            <img src={logo} alt="KuboHub Logo" className="w-16 mx-auto mb-3" />
+            <h1 className="text-2xl font-bold text-olive-dark mb-1">Welcome Back 🌿</h1>
+            <p className="text-gray-600 text-sm">Sign in to continue</p>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-olive-dark mb-6">
             Login
           </h2>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleLogin();
-            }}
-            className="flex flex-col gap-4"
-          >
+          <div className="flex flex-col gap-4">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email Address"
-              className="border border-gray-300 rounded-xl p-3 w-full focus:outline-none focus:ring-2 focus:ring-olive/60 text-gray-800 placeholder-gray-500 text-sm sm:text-base transition-all"
+              className="border border-gray-300 rounded-xl p-3 sm:p-3.5 w-full focus:outline-none focus:ring-2 focus:ring-olive/60 text-gray-800 placeholder-gray-500 text-sm sm:text-base transition-all"
+              required
             />
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="border border-gray-300 rounded-xl p-3 w-full focus:outline-none focus:ring-2 focus:ring-olive/60 text-gray-800 placeholder-gray-500 text-sm sm:text-base transition-all"
+              className="border border-gray-300 rounded-xl p-3 sm:p-3.5 w-full focus:outline-none focus:ring-2 focus:ring-olive/60 text-gray-800 placeholder-gray-500 text-sm sm:text-base transition-all"
+              required
             />
 
             <button
-              type="submit"
-              className="bg-olive-dark text-white rounded-xl p-3 w-full mt-2 font-semibold hover:bg-olive transition-all duration-300 shadow-md hover:shadow-lg"
+              onClick={handleLogin}
+              className="bg-olive-dark text-white rounded-xl p-3 sm:p-3.5 w-full mt-2 font-semibold hover:bg-olive transition-all duration-300 shadow-md hover:shadow-lg active:scale-[0.98]"
             >
               Sign In
             </button>
 
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="flex justify-center items-center gap-3 border border-gray-300 bg-white rounded-xl p-3 w-full hover:bg-gray-50 transition-all duration-300 shadow-sm hover:shadow-md text-gray-700 font-medium text-sm sm:text-base"
-            >
-              <img
-                src="https://www.svgrepo.com/show/475656/google-color.svg"
-                alt="Google"
-                className="w-5 h-5"
-              />
-              Continue with Google
-            </button>
-
-            <div className="text-center mt-5 text-gray-700 text-sm sm:text-base">
+            <div className="text-center mt-4 text-gray-700 text-sm sm:text-base">
               <p>
-                Don’t have an account?{" "}
-                <Link to="/signup">
-                  <span className="text-olive-dark font-semibold hover:underline">
-                    Sign up
-                  </span>
+                Don't have an account?{' '}
+                <Link to = "/signup">
+                <span 
+                  onClick={() => console.log('Navigate to signup')}
+                  className="text-olive-dark font-semibold hover:underline cursor-pointer"
+                >
+                  Sign up
+                </span>
                 </Link>
               </p>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

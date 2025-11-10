@@ -27,6 +27,11 @@ import axios from "axios";
 import { addNotification } from "../../../utils/notificationSystem";
 import { updateHostPoints } from "../../../utils/pointSystem";
 
+import CalendarView from "./CalendarView";
+
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
+
 const Reservations = () => {
   const [reservations, setReservations] = useState([]);
   const [filteredReservations, setFilteredReservations] = useState([]);
@@ -40,6 +45,16 @@ const Reservations = () => {
     { startDate: new Date(), endDate: new Date(), key: "selection" },
   ]);
   const [editedGuests, setEditedGuests] = useState(1);
+
+  //for calendar
+  // Inside your component:
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  // Filtered reservations for calendar
+  
+
+  // Convert reservations to DateRange format for highlighting
+  
 
   // 🔹 Detect logged-in host
   useEffect(() => {
@@ -201,10 +216,21 @@ const Reservations = () => {
           <p className="text-sm text-gray-600 mt-1">
             Manage and track your property bookings
           </p>
+          {/* <button
+            onClick={() => setShowCalendar(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 hover:shadow-lg"
+          >
+            <Calendar size={16} />
+            View Calendar
+          </button> */}
         </div>
+        
+
+
 
         {/* 🔹 Filter Buttons */}
         <div className="flex flex-wrap gap-2">
+          
           {[
             "all",
             "Confirmed",
@@ -227,8 +253,19 @@ const Reservations = () => {
                 : type.charAt(0).toUpperCase() + type.slice(1)}
             </button>
           ))}
+
+          
         </div>
       </div>
+
+      {showCalendar && (
+        <CalendarView
+          reservations={reservations.filter(
+            (r) => r.status === "Confirmed" || r.status === "Completed"
+          )}
+          onClose={() => setShowCalendar(false)}
+        />
+      )}
 
       {loading ? (
         <div className="text-center py-16">

@@ -141,7 +141,7 @@ const Notifications = () => {
 
   // 🔹 Render notifications
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 rounded-2xl p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">

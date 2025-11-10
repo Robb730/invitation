@@ -436,9 +436,7 @@ const HostNav = ({ user, toggleSidebar }) => {
                 <div className="px-4 py-2 text-left text-black text-sm font-medium border-b border-gray-200">
                   {fullname || "Loading..."}
                 </div>
-                <button className="px-4 py-2 text-left hover:bg-olive/40 transition">
-                  View Profile
-                </button>
+                
                 <button
                   onClick={handleAuthClick}
                   className="px-4 py-2 text-left hover:bg-olive/40 transition"
