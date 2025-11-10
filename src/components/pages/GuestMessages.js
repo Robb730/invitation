@@ -23,6 +23,7 @@ const GuestMessages = () => {
   const [loadingConversations, setLoadingConversations] = useState(true);
   const navigate = useNavigate();
   const messagesEndRef = useRef(null); // 👈 for auto-scroll
+  const [showConversations, setShowConversations] = useState(true);
 
   // ✅ Scroll to bottom smoothly whenever messages update
   const scrollToBottom = () => {
@@ -151,7 +152,7 @@ const GuestMessages = () => {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Left Panel */}
-      <div className="w-1/3 bg-white shadow-lg flex flex-col">
+      <div className={`${showConversations ? 'flex' : 'hidden'} md:flex w-full md:w-1/3 bg-white shadow-lg flex-col`}>
         <div className="p-5 border-b">
           {/* 🔙 Back Button */}
           <button
@@ -176,7 +177,10 @@ const GuestMessages = () => {
               {conversations.map((conversation) => (
                 <li
                   key={conversation.id}
-                  onClick={() => setSelectedConversation(conversation)}
+                  onClick={() => {
+                    setSelectedConversation(conversation);
+                    setShowConversations(false);
+                  }}
                   className={`flex items-center p-4 hover:bg-gray-100 cursor-pointer rounded-xl transition ${selectedConversation?.id === conversation.id
                       ? "bg-gray-100"
                       : ""
@@ -193,11 +197,11 @@ const GuestMessages = () => {
                       {conversation.hostName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-800">
                       {conversation.hostName}
                     </p>
-                    <p className="text-gray-600 text-sm truncate max-w-[180px]">
+                    <p className="text-gray-600 text-sm truncate">
                       {conversation.lastMessage || "No messages yet"}
                     </p>
                     <span className="text-gray-400 text-xs">
@@ -214,14 +218,23 @@ const GuestMessages = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 bg-gray-50 flex flex-col">
+      <div className={`${!showConversations ? 'flex' : 'hidden'} md:flex flex-1 bg-gray-50 flex-col w-full`}>
         {selectedConversation ? (
           <>
             {/* Header */}
             <div className="border-b p-5">
-              <h3 className="text-lg font-semibold text-olive-dark">
-                Chat with {selectedConversation.hostName}
-              </h3>
+              <div className="flex items-center">
+                {/* Mobile back button */}
+                <button
+                  onClick={() => setShowConversations(true)}
+                  className="md:hidden mr-3 text-olive-dark hover:text-olive font-medium"
+                >
+                  ←
+                </button>
+                <h3 className="text-lg font-semibold text-olive-dark">
+                  Chat with {selectedConversation.hostName}
+                </h3>
+              </div>
             </div>
 
             {/* Messages Area */}
@@ -282,7 +295,7 @@ const GuestMessages = () => {
               />
               <button
                 onClick={handleSendMessage}
-                className="ml-3 p-3 bg-olive-dark text-white rounded-lg hover:opacity-80"
+                className="ml-3 p-3 bg-olive-dark text-white rounded-lg hover:opacity-80 whitespace-nowrap"
               >
                 Send
               </button>
