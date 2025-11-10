@@ -1,11 +1,11 @@
 import { PayPalButtons } from "@paypal/react-paypal-js";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import bg from "./hostpage-comp/images/hostsignup2.jpg";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../../firebaseConfig";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDoc, updateDoc } from "firebase/firestore";
 
 const HostSignUp = () => {
   const [fullName, setFullName] = useState("");
@@ -18,8 +18,37 @@ const HostSignUp = () => {
   const [showPayment, setShowPayment] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [policies, setPolicies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [hostPay, setHostPay] = useState(0);
 
   // 🟢 Handle Sign Up
+  useEffect(() => {
+    const fetchPolicies = async () => {
+      try {
+        const ref = doc(db, "servicepolicy", "main"); // your collection & doc
+        const snap = await getDoc(ref);
+
+        if (snap.exists()) {
+          const data = snap.data();
+          setPolicies(data.policies || []); // assume it's an array
+          setHostPay(data.servicefee);
+        } else {
+          setPolicies([]);
+        }
+      } catch (error) {
+        console.error("Error fetching policies:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPolicies();
+  }, []); // empty dependency array: runs once on mount
+  if (loading) {
+    return <p>Loading policies...</p>;
+  }
+
   const handleSignUp = async (e) => {
     e.preventDefault();
     try {
@@ -29,9 +58,14 @@ const HostSignUp = () => {
         return;
       }
 
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       const user = userCredential.user;
 
+      // Save user data
       await setDoc(doc(db, "users", user.uid), {
         fullName,
         phone,
@@ -46,8 +80,14 @@ const HostSignUp = () => {
           "https://static.vecteezy.com/system/resources/thumbnails/020/911/740/small/user-profile-icon-profile-avatar-user-icon-male-icon-face-icon-profile-icon-free-png.png",
       });
 
+      // Store ID so payment can continue
       setUserId(user.uid);
-      setShowTerms(true); // 🔹 Show terms first before payment
+
+      // ✅ The important part: sign out so the new account is not logged in automatically
+      
+
+      setShowTerms(true); // show terms modal
+      // 🔹 Show terms first before payment
     } catch (e) {
       alert(e.message);
     }
@@ -74,7 +114,8 @@ const HostSignUp = () => {
           Become a Host
         </h1>
         <p className="text-gray-200 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
-          Share your property, connect with travelers, and earn income by offering unique and memorable stays.
+          Share your property, connect with travelers, and earn income by
+          offering unique and memorable stays.
         </p>
         <Link to="/" className="text-olive-light hover:underline text-sm">
           ← Go back to homepage
@@ -165,20 +206,24 @@ const HostSignUp = () => {
 
             <div className="text-gray-700 text-sm leading-relaxed space-y-3 mb-6">
               <p>
-                Welcome to KuboHub! By becoming a host, you agree to the following terms:
+                Welcome to KuboHub! By becoming a host, you agree to the
+                following terms:
               </p>
+
               <ul className="list-disc list-inside space-y-2">
-                <li>All property information provided must be accurate and truthful.</li>
-                <li>Hosts are responsible for maintaining cleanliness and safety of their property.</li>
-                <li>Any form of discrimination or harassment is strictly prohibited.</li>
-                <li>Hosts must comply with all local housing, tax, and safety regulations.</li>
-                <li>Subscription fees are billed monthly and non-refundable once paid.</li>
-                <li>Users who violate terms may have hosting privileges suspended or revoked.</li>
-                <li>KuboHub is not liable for damages, cancellations, or user disputes.</li>
-                <li>By clicking confirm, you acknowledge reading and accepting all rules stated herein.</li>
+                {policies.map((policy, index) => (
+                  <li key={index}>{policy}</li>
+                ))}
               </ul>
+
               <p>
-                Thank you for choosing to share your space responsibly with travelers.
+                By clicking confirm, you acknowledge reading and accepting all
+                rules stated herein.
+              </p>
+
+              <p>
+                Thank you for choosing to share your space responsibly with
+                travelers.
               </p>
             </div>
 
@@ -220,7 +265,7 @@ const HostSignUp = () => {
               Complete Your Host Subscription
             </h2>
             <p className="text-gray-600 mb-4 text-sm sm:text-base">
-              Pay ₱499/month (approx $9.99 USD) to activate your hosting privileges.
+              Pay ₱{hostPay}/month to activate your hosting privileges.
             </p>
 
             <PayPalButtons
@@ -229,19 +274,36 @@ const HostSignUp = () => {
                 actions.order.create({
                   purchase_units: [
                     {
-                      amount: { value: "499", currency_code: "PHP" },
+                      amount: { value: hostPay, currency_code: "PHP" },
                       description: "Monthly Host Subscription",
                     },
                   ],
                 })
               }
               onApprove={async (data, actions) => {
+                
+
+                const next = new Date();
+                next.setMonth(next.getMonth() + 1);
+
+                const mm2 = String(next.getMonth() + 1).padStart(2, "0");
+                const dd2 = String(next.getDate()).padStart(2, "0");
+                const yy2 = String(next.getFullYear()).slice(-2);
+
+                const nextMonth = `${mm2}${dd2}${yy2}`;
+
                 await actions.order.capture();
                 await setDoc(
                   doc(db, "users", userId),
                   { subscribed: true },
                   { merge: true }
                 );
+                await updateDoc(
+                  doc(db,"users", userId),
+                  {
+                      nextbilling: nextMonth
+                  }
+                )
 
                 const currentUser = auth.currentUser;
                 if (currentUser) {
@@ -255,6 +317,7 @@ const HostSignUp = () => {
                   alert(
                     "Payment successful! Verification email sent. Please check your inbox."
                   );
+                  await auth.signOut();
                 } else {
                   alert(
                     "Payment successful! Please log in again to verify your account."

@@ -26,6 +26,8 @@ import {
   Star,
 } from "lucide-react";
 import RewardsAdminPanel from "./admin-comp/RewardsAdminPanel";
+import PaymentCashoutsPanel from "./admin-comp/PaymentCashoutsPanel";
+import ServiceFeePanel from "./admin-comp/ServiceFeeAndPolicyPanel";
 
 const AdminPage = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -948,6 +950,18 @@ const AdminPage = () => {
           <RewardsAdminPanel/>
           </>
         );
+        case "service fee & policy":
+          return(
+            <>
+            <ServiceFeePanel/>
+            </>
+          );
+          case "payment cashouts":
+          return(
+            <>
+              <PaymentCashoutsPanel/>
+            </>
+          );
       default:
         return null;
     }
@@ -993,7 +1007,7 @@ const AdminPage = () => {
         </div>
 
         <div className="px-6 flex gap-1 overflow-x-auto">
-          {["dashboard", "reservations", "reviews", "rewards"].map((tab) => (
+          {["dashboard", "reservations", "reviews", "rewards", "service fee & policy", "payment cashouts"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}

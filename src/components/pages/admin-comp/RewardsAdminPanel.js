@@ -11,7 +11,7 @@ import {
 import { Plus, Gift, Trash2, Award, Sparkles, X, Percent, Wallet} from "lucide-react";
 import { addReward } from "../../../utils/rewardsSystem";
 
-const tiers = ["bronze", "silver", "gold", "platinum", "diamond", "hiraya"];
+const tiers = ["bronze", "silver", "gold", "platinum", "diamond", "hiraya host"];
 
 const RewardsAdminPanel = () => {
   const [selectedTier, setSelectedTier] = useState("silver");
@@ -53,7 +53,7 @@ const RewardsAdminPanel = () => {
     gold: "👑",
     platinum: "⭐",
     diamond: "💎",
-    hiraya: "✨",
+    "hiraya host": "✨",
   };
 
   const tierColors = {
@@ -61,7 +61,7 @@ const RewardsAdminPanel = () => {
     silver: "from-gray-400 to-gray-600",
     gold: "from-yellow-400 to-yellow-600",
     platinum: "from-slate-300 to-slate-500",
-    hiraya: "from-emerald-300 to-emerald-500",
+    "hiraya host": "from-emerald-300 to-emerald-500",
   };
 
   const fetchRewards = useCallback(async () => {
@@ -208,6 +208,7 @@ const RewardsAdminPanel = () => {
                     {rewards.length} reward{rewards.length !== 1 ? "s" : ""}{" "}
                     available
                   </p>
+                  
                 </div>
               </div>
 

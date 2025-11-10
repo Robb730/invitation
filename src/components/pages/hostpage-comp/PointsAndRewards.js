@@ -145,7 +145,10 @@ const PointsAndRewards = () => {
           setPoints(userPoints);
           setTierInfo(getNextTierInfo(userPoints));
 
+
           const info = getNextTierInfo(userPoints);
+          setSelectedTier(info.current);
+
           const progress =
             info.next === "Maxed"
               ? 100
@@ -382,9 +385,9 @@ const PointsAndRewards = () => {
                     ? "bg-gradient-to-br from-white to-olive-50 border-2 border-olive-dark/50 hover:scale-105"
                     : isUnlocked
                     ? "bg-white border border-gray-200 hover:shadow-xl hover:scale-105"
-                    : "bg-gray-50 border border-gray-200 opacity-60 cursor-not-allowed"
+                    : "bg-gray-50 border border-gray-200"
                 }`}
-                disabled={!isUnlocked}
+                
               >
                 {isCurrent && (
                   <div className="absolute -top-2 -right-2 bg-olive-dark text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
@@ -469,25 +472,11 @@ const PointsAndRewards = () => {
                     : "border-gray-200"
                 }`}
               >
-                {!tierUnlocked && (
-                  <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
-                    <div className="text-center text-white">
-                      <svg
-                        className="w-12 h-12 mx-auto mb-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <p className="font-bold">Locked</p>
-                      <p className="text-xs mt-1">Reach {selectedTier} tier</p>
-                    </div>
-                  </div>
-                )}
+                
+                  
+                    
+                  
+                
 
                 {canRedeem && tierUnlocked && !alreadyClaimed && (
                   <div className="absolute -top-3 -right-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-bounce">
