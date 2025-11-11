@@ -3,7 +3,6 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "../../../firebaseConfig";
 import { useNavigate } from "react-router-dom";
 
-
 import "leaflet/dist/leaflet.css";
 
 import MapSection from "../hostpage-comp/MapSection";
@@ -132,15 +131,13 @@ const HostNav = ({ user, toggleSidebar }) => {
             // 🟢 Handle Points initialization
             const pointsRef = doc(db, "hostPoints", user.uid);
             const pointsSnap = await getDoc(pointsRef);
-            if(pointsSnap.exists()){
+            if (pointsSnap.exists()) {
               const pointsData = pointsSnap.data();
               setPoints(pointsData.points || 0);
               setTier(pointsData.tier || "Bronze");
             } else {
               console.log("No points data found for user.");
             }
-
-            
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -425,8 +422,6 @@ const HostNav = ({ user, toggleSidebar }) => {
 
           {/* 🟢 Profile (All screens) */}
           <div className="relative">
-            
-
             {/* Dropdown */}
             {open && (
               <div
@@ -436,7 +431,7 @@ const HostNav = ({ user, toggleSidebar }) => {
                 <div className="px-4 py-2 text-left text-black text-sm font-medium border-b border-gray-200">
                   {fullname || "Loading..."}
                 </div>
-                
+
                 <button
                   onClick={handleAuthClick}
                   className="px-4 py-2 text-left hover:bg-olive/40 transition"
@@ -456,23 +451,22 @@ const HostNav = ({ user, toggleSidebar }) => {
               <span className="text-lg leading-none font-bold">+</span>
             </button>
             <span
-  onClick={() => setShowPointsModal(true)}
-  className="text-xs font-medium text-olive-dark cursor-pointer"
->
-  {tier}
-</span>
-            
+              onClick={() => setShowPointsModal(true)}
+              className="text-xs font-medium text-olive-dark cursor-pointer"
+            >
+              {tier}
+            </span>
           </div>
           <img
-              src={
-                profile && profile.startsWith("http")
-                  ? profile
-                  : "https://via.placeholder.com/40"
-              }
-              alt="Host Profile"
-              className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white/60 shadow cursor-pointer object-cover"
-              onClick={() => setOpen(!open)}
-            />
+            src={
+              profile && profile.startsWith("http")
+                ? profile
+                : "https://via.placeholder.com/40"
+            }
+            alt="Host Profile"
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white/60 shadow cursor-pointer object-cover"
+            onClick={() => setOpen(!open)}
+          />
         </div>
       </div>
 

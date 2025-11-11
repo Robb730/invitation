@@ -14,7 +14,7 @@ import {
 import { db, auth } from "../../firebaseConfig";
 import Navbar from "./homepage-comp/Navbar";
 import Footer from "./homepage-comp/Footer";
-import { ChevronLeft, ChevronRight, X, Calendar, Tag, MessageCircle, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Calendar, Tag, MessageCircle, MapPin, Star } from "lucide-react";
 import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
@@ -31,6 +31,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import markerIcon from "./hostpage-comp/images/marker_olive.png"; // you can replace this with your own image
 import { updateHostPoints } from "../../utils/pointSystem";
+import { addNotification } from "../../utils/notificationSystem";
 
 const customMarker = L.icon({
   iconUrl: markerIcon,
@@ -60,6 +61,11 @@ const ServicesDetails = () => {
 
   const [messages, setMessages] = useState([]);
 
+  const [ratings, setRatings] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+
+  const [hostTier, setHostTier] = useState("Bronze");
+
   useEffect(() => {
     if (!user || !listing) return;
 
@@ -85,38 +91,149 @@ const ServicesDetails = () => {
     },
   ]);
 
-  const handleSendMessage = async () => {
-    if (!messageText.trim()) return;
-
-    try {
-      const chatId = `${user.id}_${listing.hostId}_${id}`;
-
-      const chatRef = doc(db, "chats", chatId);
-      const chatSnap = await getDoc(chatRef);
-
-      if (!chatSnap.exists()) {
-        // create new chat document
-        await setDoc(chatRef, {
+  useEffect(() => {
+      const fetchRatings = async () => {
+        try {
+          const ratingsRef = collection(db, "ratings");
+          const q = query(ratingsRef, where("listingId", "==", id));
+          const snapshot = await getDocs(q);
+          const allRatings = snapshot.docs.map((doc) => doc.data());
+  
+          const ratingsWithComments = allRatings.filter(
+            (r) => r.comment && r.comment.trim() !== ""
+          );
+  
+          const avg =
+            allRatings.length > 0
+              ? allRatings.reduce((sum, r) => sum + (r.rating || 0), 0) /
+                allRatings.length
+              : 0;
+  
+          setRatings({
+            all: allRatings,
+            withComments: ratingsWithComments,
+          });
+          setAverageRating(avg);
+        } catch (err) {
+          console.error("Error fetching ratings:", err);
+        }
+      };
+      fetchRatings();
+    }, [id]);
+  
+    // Chat listener
+    useEffect(() => {
+    if (!user || !listing) return;
+  
+    // 1️⃣ Look for any existing chat where participants array contains both the guest and the host
+    const chatsRef = collection(db, "chats");
+    const q = query(
+      chatsRef,
+      where("participants", "array-contains", user.id)
+    );
+  
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      // 2️⃣ Filter the chat docs to find one that includes the host as well
+      const existingChat = snapshot.docs.find(
+        (doc) => doc.data().participants.includes(listing.hostId)
+      );
+  
+      let chatId;
+  
+      if (existingChat) {
+        // 3️⃣ If found, use that chat’s ID
+        chatId = existingChat.id;
+      } else {
+        // 4️⃣ If not, build a new one
+        chatId = `${user.id}_${listing.hostId}`;
+        await setDoc(doc(db, "chats", chatId), {
           participants: [user.id, listing.hostId],
-          listingId: id,
-          lastMessage: messageText,
+          createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
-      } else {
-        // update existing chat's last message and timestamp
+      }
+  
+      // 5️⃣ Attach real-time listener to that chat’s messages
+      const messagesRef = collection(db, "chats", chatId, "messages");
+      const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
+  
+      const unsubMessages = onSnapshot(messagesQuery, (msgSnap) => {
+        const msgs = msgSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setMessages(msgs);
+      });
+  
+      // Cleanup inner listener
+      return () => unsubMessages();
+    });
+  
+    // Cleanup outer listener
+    return () => unsubscribe();
+  }, [user, listing]);
+  
+  
+    const handleSendMessage = async () => {
+    if (!messageText.trim() || !user || !listing) return;
+  
+    try {
+      // 1️⃣ Check if there's already a chat between this guest and host
+      const chatsRef = collection(db, "chats");
+      const q = query(chatsRef, where("participants", "array-contains", user.id));
+      const snap = await getDocs(q);
+  
+      // 2️⃣ Find one that also includes the host
+      const existingChat = snap.docs.find(
+        (doc) => doc.data().participants.includes(listing.hostId)
+      );
+  
+      let chatId;
+      const hostId = listing.hostId;
+      const guestId = user.id;
+  
+      if (existingChat) {
+        // 3️⃣ Reuse existing chat
+        chatId = existingChat.id;
+        const chatRef = doc(db, "chats", chatId);
         await updateDoc(chatRef, {
           lastMessage: messageText,
           updatedAt: serverTimestamp(),
         });
+  
+        // 4️⃣ Add message to existing chat
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          senderId: guestId,
+          text: messageText,
+          createdAt: serverTimestamp(),
+        });
+      } else {
+        // 5️⃣ Create a new chat between this guest and host
+        chatId = `${guestId}_${hostId}`;
+        const chatRef = doc(db, "chats", chatId);
+  
+        await setDoc(chatRef, {
+          participants: [guestId, hostId],
+          listingId: listing.id || id,
+          lastMessage: messageText,
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        });
+  
+        // 6️⃣ Add initial "query note"
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          senderId: "system",
+          text: `📌 Query regarding the listing "${listing.title}"`,
+          createdAt: serverTimestamp(),
+          system: true,
+        });
+  
+        // 7️⃣ Add user’s first message
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          senderId: guestId,
+          text: messageText,
+          createdAt: serverTimestamp(),
+        });
       }
-
-      // add message to subcollection
-      await addDoc(collection(chatRef, "messages"), {
-        senderId: user.id,
-        text: messageText,
-        createdAt: serverTimestamp(),
-      });
-
+  
+      // 8️⃣ Clear the input
       setMessageText("");
     } catch (err) {
       console.error("Error sending message:", err);
@@ -203,22 +320,30 @@ const ServicesDetails = () => {
 
   // 🔹 Fetch host info
   useEffect(() => {
-    const fetchHostInfo = async () => {
-      if (!listing?.hostId) return;
-      try {
-        const hostRef = doc(db, "users", listing.hostId);
-        const hostSnap = await getDoc(hostRef);
-        if (hostSnap.exists()) {
-          const data = hostSnap.data();
-          setHostName(data.fullName || data.name || "Unknown Host");
-          setHostPic(data.profilePic || "pic");
+      const fetchHostInfo = async () => {
+        if (!listing?.hostId) return;
+        try {
+          const hostRef = doc(db, "users", listing.hostId);
+          const hostSnap = await getDoc(hostRef);
+          if (hostSnap.exists()) {
+            const data = hostSnap.data();
+            setHostName(data.fullName || data.name || "Unknown Host");
+            setHostPic(data.profilePic || "pic");
+            //fetch host tier
+  
+            const hostTier = doc(db, "hostPoints", listing.hostId);
+            const hostTierSnap = await getDoc(hostTier);
+            if (hostTierSnap.exists()) {
+              const tierData = hostTierSnap.data();
+              setHostTier(tierData.tier || "Bronze");
+            }
+          }
+        } catch (err) {
+          console.error("Error fetching host:", err);
         }
-      } catch (err) {
-        console.error("Error fetching host:", err);
-      }
-    };
-    fetchHostInfo();
-  }, [listing]);
+      };
+      fetchHostInfo();
+    }, [listing]);
 
   // 🔹 Fetch booked dates
   useEffect(() => {
@@ -543,6 +668,15 @@ const ServicesDetails = () => {
             <h3 className="text-2xl md:text-3xl font-bold text-olive-dark mb-4">
               About this service
             </h3>
+            {averageRating > 0 && (
+                  <span className="bg-yellow-50 text-yellow-600 px-3 py-1.5 rounded-full flex items-center gap-1.5 text-sm font-medium shadow-sm border border-yellow-100 w-fit">
+                    <Star size={16} fill="currentColor" />
+                    {averageRating.toFixed(1)}
+                    <span className="text-gray-500 text-xs">
+                      ({ratings.all?.length || 0})
+                    </span>
+                  </span>
+                )}
             <p className="text-gray-800 leading-relaxed text-sm md:text-base">{listingDetails}</p>
             <div className="mt-6 border-t pt-5 text-gray-600 text-sm md:text-base">
               {listing.description}
@@ -594,21 +728,176 @@ const ServicesDetails = () => {
                 </div>
               </div>
             )}
+
+            {ratings.all?.length > 0 && (
+              <div className="mt-10 md:mt-14">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                  <h3 className="text-2xl md:text-3xl font-bold text-olive-dark flex items-center gap-3">
+                    <Star
+                      size={24}
+                      className="text-yellow-500"
+                      fill="currentColor"
+                    />
+                    Reviews
+                  </h3>
+                  <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-100 px-4 py-1.5 rounded-full text-yellow-600 font-medium shadow-sm w-fit">
+                    {averageRating.toFixed(1)} ★
+                    <span className="text-gray-500 text-sm">
+                      ({ratings.all.length})
+                    </span>
+                  </div>
+                </div>
+
+                {ratings.withComments.length > 0 ? (
+                  <div className="grid gap-4 md:gap-5">
+                    {ratings.withComments.map((r, i) => (
+                      <div
+                        key={i}
+                        className="bg-white border border-gray-100 rounded-xl md:rounded-2xl p-4 md:p-5 shadow-sm hover:shadow-lg transition-all duration-200 animate-[slideUp_0.4s_ease-out]"
+                        style={{ animationDelay: `${i * 0.1}s` }}
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-olive-light/30 text-olive-dark font-semibold w-10 h-10 rounded-full flex items-center justify-center uppercase flex-shrink-0">
+                              {r.guestName?.charAt(0) || "G"}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-800 text-sm md:text-base">
+                                {r.guestName || "Guest"}
+                              </p>
+                              <div className="flex text-yellow-400 text-sm">
+                                {"★".repeat(r.rating)}
+                                <span className="text-gray-300">
+                                  {"★".repeat(5 - r.rating)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-xs md:text-sm text-gray-500 font-medium whitespace-nowrap">
+                            {r.createdAt?.toDate
+                              ? r.createdAt.toDate().toLocaleDateString()
+                              : new Date(r.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        <p className="text-gray-700 text-sm md:text-base italic leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
+                          "{r.comment}"
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic bg-gray-50 border border-gray-100 rounded-xl p-4 text-center text-sm md:text-base">
+                    No written reviews yet — but this listing has{" "}
+                    <span className="font-semibold text-olive-dark">
+                      {ratings.all.length}
+                    </span>{" "}
+                    rating{ratings.all.length > 1 ? "s" : ""}.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Column - Sticky on Desktop */}
           <div className="space-y-4 md:space-y-5 lg:sticky lg:top-24 lg:self-start">
             {/* 🧑‍💼 Host Info */}
             <div className="bg-white border rounded-xl md:rounded-2xl p-4 md:p-5 shadow-md flex items-center gap-4">
-              <img
-                src={hostPic}
-                alt={hostName}
-                className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover ring-2 ring-olive"
-              />
+              <div className="relative">
+                <img
+                  src={hostPic}
+                  alt={hostName}
+                  className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover ring-2 ring-olive"
+                />
+                {/* Tier Badge on Avatar */}
+                <div
+                  className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shadow-lg border-2 border-white ${
+                    hostTier === "Hiraya Host"
+                      ? "bg-gradient-to-br from-emerald-600 to-emerald-400 text-white"
+                      : hostTier === "Diamond"
+                      ? "bg-gradient-to-br from-cyan-400 to-blue-500 text-white"
+                      : hostTier === "Platinum"
+                      ? "bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800"
+                      : hostTier === "Gold"
+                      ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-white"
+                      : hostTier === "Silver"
+                      ? "bg-gradient-to-br from-gray-200 to-gray-300 text-gray-700"
+                      : hostTier === "Bronze"
+                      ? "bg-gradient-to-br from-amber-600 to-amber-800 text-white"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {hostTier === "Hiraya Host"
+                    ? "✨"
+                    : hostTier === "Diamond"
+                    ? "💎"
+                    : hostTier === "Platinum"
+                    ? "⭐"
+                    : hostTier === "Gold"
+                    ? "👑"
+                    : hostTier === "Silver"
+                    ? "🥈"
+                    : hostTier === "Bronze"
+                    ? "🥉"
+                    : "🏅"}
+                </div>
+              </div>
               <div className="flex-1">
-                <h4 className="font-semibold text-olive-dark text-sm md:text-base">
-                  {hostName}
-                </h4>
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="font-semibold text-olive-dark text-sm md:text-base">
+                    {hostName}
+                  </h4>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] md:text-xs font-bold shadow-sm ${
+                      hostTier === "Hiraya Host"
+                        ? "bg-gradient-to-r from-emerald-600 via-emerald-400 to-teal-500 text-white border-2 border-emerald-300 shadow-2xl shadow-emerald-500/70 animate-pulse hover:scale-105 transition-transform duration-300"
+                        : hostTier === "Diamond"
+                        ? "bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-700 border border-cyan-200"
+                        : hostTier === "Platinum"
+                        ? "bg-gradient-to-r from-gray-50 to-slate-50 text-gray-700 border border-gray-300"
+                        : hostTier === "Gold"
+                        ? "bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-700 border border-yellow-200"
+                        : hostTier === "Silver"
+                        ? "bg-gradient-to-r from-gray-50 to-zinc-50 text-gray-600 border border-gray-200"
+                        : hostTier === "Bronze"
+                        ? "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200"
+                        : "bg-gray-50 text-gray-500 border border-gray-200"
+                    }`}
+                  >
+                    <span
+                      className={`text-xs ${
+                        hostTier === "Hiraya Host"
+                          ? "text-white"
+                          : hostTier === "Diamond"
+                          ? "text-cyan-500"
+                          : hostTier === "Platinum"
+                          ? "text-gray-400"
+                          : hostTier === "Gold"
+                          ? "text-yellow-500"
+                          : hostTier === "Silver"
+                          ? "text-gray-400"
+                          : hostTier === "Bronze"
+                          ? "text-amber-600"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      {hostTier === "Hiraya Host"
+                        ? "✨"
+                        : hostTier === "Diamond"
+                        ? "💎"
+                        : hostTier === "Platinum"
+                        ? "⭐"
+                        : hostTier === "Gold"
+                        ? "👑"
+                        : hostTier === "Silver"
+                        ? "🥈"
+                        : hostTier === "Bronze"
+                        ? "🥉"
+                        : "🏅"}
+                    </span>
+                    {hostTier || "Standard"} Host
+                  </span>
+                </div>
                 <p className="text-gray-500 text-xs md:text-sm">Host</p>
               </div>
             </div>
@@ -1069,6 +1358,14 @@ const ServicesDetails = () => {
 
                       alert("Reservation confirmed and payment successful!");
                       updateHostPoints(listing.hostId, 20);
+                      addNotification(
+                                              "Reservation",
+                                              id,
+                                              listing.title,
+                                              auth.currentUser.uid,
+                                              listing.hostId,
+                                              20
+                                            );
 
                       setShowSummary(false);
                     } catch (err) {

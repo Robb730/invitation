@@ -6,6 +6,7 @@ import {
   where,
   doc,
   getDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db, auth } from "../../../firebaseConfig";
 import {
@@ -30,6 +31,117 @@ const Earnings = () => {
 
   const [cashouts, setCashouts] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+
+  const [promoModalOpen, setPromoModalOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+
+  const openPromoModal = () => setPromoModalOpen(true);
+  const closePromoModal = () => setPromoModalOpen(false);
+
+  const [validCodes, setValidCodes] = useState([]);
+
+  
+
+  useEffect(() => {
+    const fetchRewardCodes = async () => {
+      try {
+        const q = query(
+          collection(db, "rewards"),
+          where("type", "==", "ewallet-credit")
+        );
+        const snap = await getDocs(q);
+  
+        const codes = snap.docs.flatMap((docSnap) => {
+          const data = docSnap.data();
+          return (data.codes || [])
+            .filter(c => !c.used) // only unused codes
+            .map(c => ({
+              ...c,
+              code: c.code.toLowerCase(),
+              money: data.money, // attach parent discount
+              rewardId: docSnap.id,
+            }));
+        });
+  
+        setValidCodes(codes);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+  
+    fetchRewardCodes();
+  }, []);
+
+  const markCodeAsUsed = async (matchedCodeObj) => {
+    if (!matchedCodeObj) return;
+  
+    try {
+      const docRef = doc(db, "rewards", matchedCodeObj.rewardId);
+      const docSnap = await getDoc(docRef);
+  
+      if (!docSnap.exists()) return;
+  
+      const data = docSnap.data();
+  
+      // Find the code in the codes array
+      const codeIndex = data.codes.findIndex(
+        (c) => c.code.toLowerCase() === matchedCodeObj.code
+      );
+  
+      if (codeIndex === -1) return;
+  
+      const updatedCodes = [...data.codes];
+      updatedCodes[codeIndex] = {
+        ...updatedCodes[codeIndex],
+        used: true,
+      };
+  
+      await updateDoc(docRef, { codes: updatedCodes });
+  
+      // Update local validCodes state to remove the used code
+      setValidCodes((prev) =>
+        prev.filter((c) => c.code.toLowerCase() !== matchedCodeObj.code)
+      );
+  
+      console.log("Promo code marked as used.");
+    } catch (error) {
+      console.error("Failed to mark promo code as used:", error);
+    }
+  };
+
+  const handlePromoSubmit = async () => {
+  const input = promoCode.trim().toLowerCase();
+
+  const matchedCodeObj = validCodes.find(c => c.code === input);
+
+  if (!matchedCodeObj) {
+    alert("Invalid or already used reward code.");
+    return closePromoModal();
+  }
+
+  // ✅ Success
+  try {
+  const hostRef = doc(db, "users", auth.currentUser.uid);
+  const hostSnap = await getDoc(hostRef);
+
+  if (hostSnap.exists()) {
+    const hostData = hostSnap.data();
+    const currentEwallet = hostData.ewallet || 0;
+
+    await updateDoc(hostRef, {
+      ewallet: currentEwallet + matchedCodeObj.money,
+    });
+    markCodeAsUsed(matchedCodeObj);
+  }
+
+  alert("Congratulations! You get ₱" + matchedCodeObj.money);
+} catch (error) {
+  console.error("Error updating eWallet:", error);
+  alert("Something went wrong.");
+}
+
+  closePromoModal();
+};
 
   // Fetch total earnings
   const fetchTotalEarnings = useCallback(async () => {
@@ -147,7 +259,7 @@ const Earnings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 rounded-3xl to-teal-50 p-4 md:p-8">
+    <div className="min-h-screen bg-white rounded-none md:rounded-3xl p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">
@@ -216,25 +328,74 @@ const Earnings = () => {
         </div>
 
         {/* Cash Out Button */}
-        <div className="mb-12 flex justify-center">
+        <div className="mb-12 flex justify-center gap-4">
           <button
             onClick={handleCashOutClick}
             disabled={loading}
             className={`group relative px-10 py-4 rounded-2xl text-white text-lg font-semibold shadow-xl transition-all duration-300 overflow-hidden ${
               loading
                 ? "bg-gray-400 cursor-not-allowed"
-                : "bg-olive hover:from-olive hover:to-olive-darker hover:shadow-2xl hover:scale-105 active:scale-95"
+                : "bg-olive hover:shadow-2xl hover:scale-105 active:scale-95"
             }`}
           >
             <span className="relative z-10 flex items-center gap-3">
               <Download className="w-5 h-5" />
               {loading ? "Processing..." : "Withdraw to PayPal"}
             </span>
+
             {!loading && (
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
             )}
           </button>
+
+          {/* Promo Code Button */}
+          <button
+            onClick={openPromoModal}
+            className="px-10 py-4 rounded-2xl bg-olive text-white text-lg font-semibold shadow-xl transition-all duration-300 hover:scale-105 active:scale-95"
+          >
+            Enter Promo Code
+          </button>
         </div>
+
+        {promoModalOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={closePromoModal} // click outside closes modal
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md animate-fadeInScale"
+              onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
+            >
+              <h2 className="text-xl font-semibold text-olive mb-4">
+                Enter Promo Code
+              </h2>
+
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                placeholder="Enter your promo code"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-olive focus:outline-none text-gray-700"
+              />
+
+              <div className="flex justify-end mt-6 gap-3">
+                <button
+                  onClick={closePromoModal}
+                  className="px-5 py-2 bg-gray-200 rounded-xl hover:bg-gray-300 transition"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handlePromoSubmit}
+                  className="px-6 py-2 bg-olive text-white rounded-xl hover:opacity-90 transition"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Cashout History */}
         <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">

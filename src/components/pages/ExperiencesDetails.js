@@ -35,6 +35,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import markerIcon from "./hostpage-comp/images/marker_olive.png"; // you can replace this with your own image
 import { updateHostPoints } from "../../utils/pointSystem";
+import { addNotification } from "../../utils/notificationSystem";
 
 const customMarker = L.icon({
   iconUrl: markerIcon,
@@ -138,21 +139,7 @@ const ExperiencesDetails = () => {
     fetchRatings();
   }, [id]);
 
-  useEffect(() => {
-    if (!user || !listing) return;
-
-    const chatId = `${user.id}_${listing.hostId}_${id}`;
-    const chatRef = doc(db, "chats", chatId);
-    const messagesRef = collection(chatRef, "messages");
-    const q = query(messagesRef, orderBy("createdAt", "asc"));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setMessages(msgs);
-    });
-
-    return () => unsubscribe();
-  }, [user, listing, id]);
+ 
 
   useEffect(() => {
     if (!listing) return;
@@ -190,38 +177,119 @@ const ExperiencesDetails = () => {
     },
   ]);
 
-  const handleSendMessage = async () => {
-    if (!messageText.trim()) return;
-
-    try {
-      const chatId = `${user.id}_${listing.hostId}_${id}`;
-
-      const chatRef = doc(db, "chats", chatId);
-      const chatSnap = await getDoc(chatRef);
-
-      if (!chatSnap.exists()) {
-        // create new chat document
-        await setDoc(chatRef, {
+  // Chat listener
+    useEffect(() => {
+    if (!user || !listing) return;
+  
+    // 1️⃣ Look for any existing chat where participants array contains both the guest and the host
+    const chatsRef = collection(db, "chats");
+    const q = query(
+      chatsRef,
+      where("participants", "array-contains", user.id)
+    );
+  
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      // 2️⃣ Filter the chat docs to find one that includes the host as well
+      const existingChat = snapshot.docs.find(
+        (doc) => doc.data().participants.includes(listing.hostId)
+      );
+  
+      let chatId;
+  
+      if (existingChat) {
+        // 3️⃣ If found, use that chat’s ID
+        chatId = existingChat.id;
+      } else {
+        // 4️⃣ If not, build a new one
+        chatId = `${user.id}_${listing.hostId}`;
+        await setDoc(doc(db, "chats", chatId), {
           participants: [user.id, listing.hostId],
-          listingId: id,
-          lastMessage: messageText,
+          createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
-      } else {
-        // update existing chat's last message and timestamp
+      }
+  
+      // 5️⃣ Attach real-time listener to that chat’s messages
+      const messagesRef = collection(db, "chats", chatId, "messages");
+      const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
+  
+      const unsubMessages = onSnapshot(messagesQuery, (msgSnap) => {
+        const msgs = msgSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setMessages(msgs);
+      });
+  
+      // Cleanup inner listener
+      return () => unsubMessages();
+    });
+  
+    // Cleanup outer listener
+    return () => unsubscribe();
+  }, [user, listing]);
+  
+  
+    const handleSendMessage = async () => {
+    if (!messageText.trim() || !user || !listing) return;
+  
+    try {
+      // 1️⃣ Check if there's already a chat between this guest and host
+      const chatsRef = collection(db, "chats");
+      const q = query(chatsRef, where("participants", "array-contains", user.id));
+      const snap = await getDocs(q);
+  
+      // 2️⃣ Find one that also includes the host
+      const existingChat = snap.docs.find(
+        (doc) => doc.data().participants.includes(listing.hostId)
+      );
+  
+      let chatId;
+      const hostId = listing.hostId;
+      const guestId = user.id;
+  
+      if (existingChat) {
+        // 3️⃣ Reuse existing chat
+        chatId = existingChat.id;
+        const chatRef = doc(db, "chats", chatId);
         await updateDoc(chatRef, {
           lastMessage: messageText,
           updatedAt: serverTimestamp(),
         });
+  
+        // 4️⃣ Add message to existing chat
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          senderId: guestId,
+          text: messageText,
+          createdAt: serverTimestamp(),
+        });
+      } else {
+        // 5️⃣ Create a new chat between this guest and host
+        chatId = `${guestId}_${hostId}`;
+        const chatRef = doc(db, "chats", chatId);
+  
+        await setDoc(chatRef, {
+          participants: [guestId, hostId],
+          listingId: listing.id || id,
+          lastMessage: messageText,
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        });
+  
+        // 6️⃣ Add initial "query note"
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          senderId: "system",
+          text: `📌 Query regarding the listing "${listing.title}"`,
+          createdAt: serverTimestamp(),
+          system: true,
+        });
+  
+        // 7️⃣ Add user’s first message
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          senderId: guestId,
+          text: messageText,
+          createdAt: serverTimestamp(),
+        });
       }
-
-      // add message to subcollection
-      await addDoc(collection(chatRef, "messages"), {
-        senderId: user.id,
-        text: messageText,
-        createdAt: serverTimestamp(),
-      });
-
+  
+      // 8️⃣ Clear the input
       setMessageText("");
     } catch (err) {
       console.error("Error sending message:", err);
@@ -1442,6 +1510,14 @@ const ExperiencesDetails = () => {
 
                       alert("Reservation confirmed and payment successful!");
                       updateHostPoints(listing.hostId, 20)
+                      addNotification(
+                                              "Reservation",
+                                              id,
+                                              listing.title,
+                                              auth.currentUser.uid,
+                                              listing.hostId,
+                                              20
+                                            );
 
                       setShowSummary(false);
                     } catch (err) {

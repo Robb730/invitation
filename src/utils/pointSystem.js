@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, updateDoc, increment } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { updateHostTier } from "./updateHostTier";
 
 // 🪙 Adjust host points
 export const updateHostPoints = async (hostId, delta) => {
@@ -19,6 +20,7 @@ export const updateHostPoints = async (hostId, delta) => {
       points: increment(delta),
       lastUpdated: new Date(),
     });
+    updateHostTier(hostId);
   }
 };
 
