@@ -361,6 +361,12 @@ const Navbar = () => {
               >
                 Favorites
               </button>
+              <button
+                onClick={() => navigate("/wishlist")}
+                className="text-left px-3 py-2.5 w-full rounded-lg text-gray-700 hover:bg-[#3d4f3a]/5 hover:text-[#3d4f3a] transition-all font-medium"
+              >
+                Wishlist
+              </button>
               <hr className="border-gray-200 my-2" />
               <button
                 onClick={handleLogout}

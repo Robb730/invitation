@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "simplelogin-7b738"
-  }
+    "default": "simplelogin-7b738",
+    "kubohub-hosting": "kubohub"
+  },
+  "targets": {},
+  "etags": {}
 }

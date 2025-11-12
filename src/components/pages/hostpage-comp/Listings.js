@@ -93,6 +93,12 @@ const Listings = ({ user }) => {
         bathrooms: updatedListing.bathrooms
           ? parseInt(updatedListing.bathrooms)
           : null,
+        duration: updatedListing.duration || null, // 🆕 Experiences
+        schedule: updatedListing.schedule || null, // 🆕 Experiences
+        maxGuests: updatedListing.maxGuests
+          ? parseInt(updatedListing.maxGuests)
+          : null, // 🆕 Experiences
+        experienceLevel: updatedListing.experienceLevel || null, // 🆕 Services
         description: updatedListing.description,
         images: updatedListing.images || [],
         promoCode: updatedListing.promoCode || null,
@@ -101,7 +107,6 @@ const Listings = ({ user }) => {
           : null,
         latitude: updatedListing.latitude || null,
         longitude: updatedListing.longitude || null,
-        // keep hostId/createdAt untouched
       };
 
       await updateDoc(listingRef, payload);
@@ -828,42 +833,65 @@ const EditModalHomes = ({ listing, onClose, onSave }) => {
 };
 // 🎯 EXPERIENCES MODAL
 const EditModalExperiences = ({ listing, onClose, onSave }) => {
-  const [title, setTitle] = useState(listing.title || "");
-  const [category, setCategory] = useState(listing.category || "");
-  const [price, setPrice] = useState(listing.price ?? "");
-  const [priceType, setPriceType] = useState(listing.priceType || "per person");
-  const [duration, setDuration] = useState(listing.duration || "");
-  const [schedule, setSchedule] = useState(listing.schedule || "");
-  const [promoCode, setPromoCode] = useState(listing.promoCode || "");
-  const [discount, setDiscount] = useState(listing.discount ?? "");
-  const [description, setDescription] = useState(listing.description || "");
-  const [images, setImages] = useState(
-    Array.isArray(listing.images) ? listing.images : []
-  );
+  const [title, setTitle] = useState(listing?.title || "");
+  const [category, setCategory] = useState(listing?.category || "");
+  const [price, setPrice] = useState(listing?.price ?? "");
+  const [priceType, setPriceType] = useState(listing?.priceType || "per person");
+  const [duration, setDuration] = useState(listing?.duration || "");
+  const [schedule, setSchedule] = useState(listing?.schedule || "");
+  const [promoCode, setPromoCode] = useState(listing?.promoCode || "");
+  const [discount, setDiscount] = useState(listing?.discount ?? "");
+  const [description, setDescription] = useState(listing?.description || "");
+  const [images, setImages] = useState(Array.isArray(listing?.images) ? listing.images : []);
   const [newImages, setNewImages] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [lat, setLat] = useState(listing.latitude ?? 14.5995);
-  const [lng, setLng] = useState(listing.longitude ?? 120.9842);
-  const [selectedAddress, setSelectedAddress] = useState(
-    listing.location || ""
+  const [lat, setLat] = useState(listing?.latitude ?? 14.5995);
+  const [lng, setLng] = useState(listing?.longitude ?? 120.9842);
+  const [selectedAddress, setSelectedAddress] = useState(listing?.location || "");
+  const [status, setStatus] = useState(
+    listing?.status ? listing.status.charAt(0).toUpperCase() + listing.status.slice(1) : "Active"
   );
-  const [status, setStatus] = useState(listing.status || "Active");
+
+  useEffect(() => {
+    setTitle(listing?.title || "");
+    setCategory(listing?.category || "");
+    setPrice(listing?.price ?? "");
+    setPriceType(listing?.priceType || "per person");
+    setDuration(listing?.duration || "");
+    setSchedule(listing?.schedule || "");
+    setPromoCode(listing?.promoCode || "");
+    setDiscount(listing?.discount ?? "");
+    setDescription(listing?.description || "");
+    setImages(Array.isArray(listing?.images) ? listing.images : listing?.images ? [listing.images] : []);
+    setNewImages([]);
+    setLat(listing?.latitude ?? listing?.lat ?? 14.5995);
+    setLng(listing?.longitude ?? listing?.lng ?? 120.9842);
+    setSelectedAddress(listing?.location || listing?.address || "");
+    setStatus(listing?.status ? listing.status.charAt(0).toUpperCase() + listing.status.slice(1) : "Active");
+  }, [listing]);
 
   const uploadToCloudinary = async (file) => {
     const form = new FormData();
     form.append("file", file);
     form.append("upload_preset", "kubo_unsigned");
-    const res = await fetch(
-      "https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload",
-      { method: "POST", body: form }
-    );
+    const res = await fetch("https://api.cloudinary.com/v1_1/dujq9wwzf/image/upload", { method: "POST", body: form });
     const data = await res.json();
     return data.secure_url;
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this listing?"))
+  const handleDeleteExistingImage = (index) => setImages((prev) => prev.filter((_, i) => i !== index));
+  const handleNewImages = (e) => {
+    const files = Array.from(e.target.files);
+    if (images.length + files.length > 4) {
+      alert("You can upload up to 4 images only.");
       return;
+    }
+    setNewImages((prev) => [...prev, ...files]);
+  };
+  const handleRemoveNewImage = (index) => setNewImages((prev) => prev.filter((_, i) => i !== index));
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this listing?")) return;
     try {
       const listingRef = doc(db, "listings", listing.id);
       await deleteDoc(listingRef);
@@ -876,25 +904,11 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
     }
   };
 
-  const handleDeleteExistingImage = (index) =>
-    setImages((prev) => prev.filter((_, i) => i !== index));
-  const handleNewImages = (e) => {
-    const files = Array.from(e.target.files);
-    if (images.length + files.length > 4) {
-      alert("You can upload up to 4 images only.");
-      return;
-    }
-    setNewImages((prev) => [...prev, ...files]);
-  };
-  const handleRemoveNewImage = (index) =>
-    setNewImages((prev) => prev.filter((_, i) => i !== index));
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUploading(true);
     let uploadedURLs = [];
-    if (newImages.length > 0)
-      uploadedURLs = await Promise.all(newImages.map(uploadToCloudinary));
+    if (newImages.length > 0) uploadedURLs = await Promise.all(newImages.map(uploadToCloudinary));
     const updatedListing = {
       ...listing,
       title,
@@ -910,7 +924,7 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
       latitude: lat,
       longitude: lng,
       location: selectedAddress,
-      status: status,
+      status,
     };
     await onSave(updatedListing);
     setUploading(false);
@@ -919,151 +933,77 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm px-3">
       <div className="bg-white/95 p-6 md:p-8 rounded-2xl shadow-2xl w-[95%] max-w-2xl overflow-y-auto max-h-[90vh] relative">
-        <button
-          className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl"
-          onClick={onClose}
-        >
-          ×
-        </button>
-        <h2 className="text-2xl font-semibold text-olive-dark text-center mb-2">
-          Edit Experience
-        </h2>
+        <button className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl" onClick={onClose}>×</button>
+        <h2 className="text-2xl font-semibold text-olive-dark text-center mb-2">Edit Experience</h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          {/* Title */}
           <div>
             <label className="font-medium text-olive-dark">Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="p-3 border rounded-lg w-full"
-              required
-            />
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="p-3 border rounded-lg w-full" />
           </div>
 
+          {/* Category */}
           <div>
             <label className="font-medium text-olive-dark">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="p-3 border rounded-lg w-full"
-              required
-            >
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="p-3 border rounded-lg w-full">
               <option value="">Select Category</option>
               <option value="City Tour">City Tour</option>
-              <option value="Hiking Adventure">Cooking Class</option>
+              <option value="Cooking Class">Cooking Class</option>
               <option value="Cultural Show">Cultural Show</option>
             </select>
           </div>
 
+          {/* Duration & Schedule */}
           <div>
             <label className="font-medium text-olive-dark">Duration</label>
-            <input
-              type="text"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="p-3 border rounded-lg w-full"
-            />
+            <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} className="p-3 border rounded-lg w-full" />
           </div>
-
           <div>
             <label className="font-medium text-olive-dark">Schedule</label>
-            <input
-              type="text"
-              value={schedule}
-              onChange={(e) => setSchedule(e.target.value)}
-              className="p-3 border rounded-lg w-full"
-            />
+            <input type="text" value={schedule} onChange={(e) => setSchedule(e.target.value)} className="p-3 border rounded-lg w-full" />
           </div>
 
+          {/* Price */}
           <div>
             <label className="font-medium text-olive-dark">Price</label>
             <div className="flex gap-2">
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="p-3 border rounded-lg w-2/3"
-                required
-              />
-              <select
-                value={priceType}
-                onChange={(e) => setPriceType(e.target.value)}
-                className="p-3 border rounded-lg w-1/3"
-              >
+              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="p-3 border rounded-lg w-2/3"/>
+              <select value={priceType} onChange={(e) => setPriceType(e.target.value)} className="p-3 border rounded-lg w-1/3">
                 <option value="per person">/ Person</option>
               </select>
             </div>
           </div>
 
+          {/* Promo & Discount */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="font-medium text-olive-dark">Promo Code</label>
-              <input
-                type="text"
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value)}
-                className="p-3 border rounded-lg w-full"
-              />
+              <input type="text" value={promoCode} onChange={(e) => setPromoCode(e.target.value)} className="p-3 border rounded-lg w-full" />
             </div>
             <div>
-              <label className="font-medium text-olive-dark">
-                Discount (%)
-              </label>
-              <input
-                type="number"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-                className="p-3 border rounded-lg w-full"
-              />
+              <label className="font-medium text-olive-dark">Discount (%)</label>
+              <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} className="p-3 border rounded-lg w-full" />
             </div>
           </div>
 
+          {/* Description */}
           <div>
             <label className="font-medium text-olive-dark">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows="3"
-              className="p-3 border rounded-lg w-full"
-              required
-            />
-          </div>
-          {/* Status */}
-          <div>
-            <label className="font-medium text-olive-dark">Status</label>
-            <select
-              name="status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="border border-gray-300 rounded-lg p-2 w-full focus:ring-2 focus:ring-olive/50"
-            >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-              <option value="Draft">Draft</option>
-            </select>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="p-3 border rounded-lg w-full"/>
           </div>
 
+          
+
+          {/* Images */}
           <div>
-            <label className="font-medium text-olive-dark">
-              Images (max 4)
-            </label>
+            <label className="font-medium text-olive-dark">Images (max 4)</label>
             {images.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 {images.map((img, idx) => (
                   <div key={idx} className="relative">
-                    <img
-                      src={img}
-                      alt="existing"
-                      className="h-24 w-full object-cover rounded-lg border"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteExistingImage(idx)}
-                      className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
-                    >
-                      ✕
-                    </button>
+                    <img src={img} alt="existing" className="h-24 w-full object-cover rounded-lg border" />
+                    <button type="button" onClick={() => handleDeleteExistingImage(idx)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
                   </div>
                 ))}
               </div>
@@ -1072,66 +1012,81 @@ const EditModalExperiences = ({ listing, onClose, onSave }) => {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 {newImages.map((file, idx) => (
                   <div key={idx} className="relative">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt="new"
-                      className="h-24 w-full object-cover rounded-lg border"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveNewImage(idx)}
-                      className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
-                    >
-                      ✕
-                    </button>
+                    <img src={URL.createObjectURL(file)} alt="new" className="h-24 w-full object-cover rounded-lg border" />
+                    <button type="button" onClick={() => handleRemoveNewImage(idx)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">✕</button>
                   </div>
                 ))}
               </div>
             )}
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleNewImages}
-              className="block w-full border p-2 rounded-lg"
-            />
+            <input type="file" accept="image/*" multiple onChange={handleNewImages} className="block w-full border p-2 rounded-lg" />
           </div>
 
-          <MapSection
-            lat={lat}
-            lng={lng}
-            setLat={setLat}
-            setLng={setLng}
-            setSelectedAddress={setSelectedAddress}
-          />
+          {/* Map */}
+          <MapSection lat={lat} lng={lng} setLat={setLat} setLng={setLng} setSelectedAddress={setSelectedAddress} />
 
           {/* Buttons */}
           <div className="flex justify-between mt-6">
+            <button type="button" onClick={handleDelete} className="bg-red-900 text-white py-2 rounded-lg w-44 hover:bg-red-700 transition duration-300 font-medium">Delete</button>
+
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="bg-red-900 text-white py-2 rounded-lg w-44 hover:bg-red-700 transition duration-300 font-medium"
-              >
-                Delete
+              {status?.toLowerCase() === "draft" && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!title || !category || !price || !description || !selectedAddress || !duration || !schedule) {
+                      alert("Please fill out all required fields before publishing.");
+                      return;
+                    }
+                    if (images.length === 0 && newImages.length === 0) {
+                      alert("Please upload at least one image before publishing.");
+                      return;
+                    }
+                    try {
+                      let uploadedURLs = [];
+                      if (newImages.length > 0) uploadedURLs = await Promise.all(newImages.map(uploadToCloudinary));
+                      const finalImages = [...images, ...uploadedURLs].slice(0, 4);
+                      const listingRef = doc(db, "listings", listing.id);
+                      await updateDoc(listingRef, {
+                        title,
+                        category,
+                        duration,
+                        schedule,
+                        price: parseFloat(price),
+                        priceType,
+                        promoCode,
+                        discount: discount ? parseFloat(discount) : null,
+                        description,
+                        images: finalImages,
+                        latitude: lat,
+                        longitude: lng,
+                        location: selectedAddress,
+                        status: "Active",
+                      });
+                      alert("🎉 Experience published successfully!");
+                      onClose();
+                      updateHostPoints(listing.hostId, 10);
+                      window.dispatchEvent(new Event("refreshListings"));
+                    } catch (error) {
+                      console.error("Error publishing experience:", error);
+                      alert("Failed to publish listing.");
+                    }
+                  }}
+                  className="bg-green-700 text-white py-2 rounded-lg w-40 hover:bg-green-600 transition duration-300 font-medium"
+                >
+                  Publish
+                </button>
+              )}
+              <button type="submit" disabled={uploading} className={`bg-olive-dark text-white py-2 rounded-lg w-40 hover:bg-olive transition duration-300 font-medium ${uploading ? "opacity-60 cursor-not-allowed" : ""}`}>
+                {uploading ? "Saving..." : "Save Changes"}
               </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={uploading}
-              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${
-                uploading ? "opacity-60 cursor-not-allowed" : ""
-              }`}
-            >
-              {uploading ? "Saving..." : "Save Changes"}
-            </button>
           </div>
         </form>
       </div>
     </div>
   );
 };
+  
 
 const EditModalServices = ({ listing, onClose, onSave }) => {
   const [title, setTitle] = useState(listing.title || "");
@@ -1154,6 +1109,23 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
   const [selectedAddress, setSelectedAddress] = useState(
     listing.location || ""
   );
+  const [status, setStatus] = useState(listing.status);
+
+  useEffect(() => {
+    setTitle(listing?.title || "");
+    setExperienceLevel(listing?.experienceLevel || "");
+    setPrice(listing?.price ?? "");
+    setPriceType(listing?.priceType || "per person");
+    setPromoCode(listing?.promoCode || "");
+    setDiscount(listing?.discount ?? "");
+    setDescription(listing?.description || "");
+    setImages(Array.isArray(listing?.images) ? listing.images : listing?.images ? [listing.images] : []);
+    setNewImages([]);
+    setLat(listing?.latitude ?? listing?.lat ?? 14.5995);
+    setLng(listing?.longitude ?? listing?.lng ?? 120.9842);
+    setSelectedAddress(listing?.location || listing?.address || "");
+    setStatus(listing?.status ? listing.status.charAt(0).toUpperCase() + listing.status.slice(1) : "Active");
+  }, [listing]);
 
   const uploadToCloudinary = async (file) => {
     const form = new FormData();
@@ -1391,25 +1363,60 @@ const EditModalServices = ({ listing, onClose, onSave }) => {
 
           {/* Buttons */}
           <div className="flex justify-between mt-6">
+            <button type="button" onClick={handleDelete} className="bg-red-900 text-white py-2 rounded-lg w-44 hover:bg-red-700 transition duration-300 font-medium">Delete</button>
+
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="bg-red-900 text-white py-2 rounded-lg w-44 hover:bg-red-700 transition duration-300 font-medium"
-              >
-                Delete
+              {status?.toLowerCase() === "draft" && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!title || !category || !price || !description || !selectedAddress || !experienceLevel) {
+                      alert("Please fill out all required fields before publishing.");
+                      return;
+                    }
+                    if (images.length === 0 && newImages.length === 0) {
+                      alert("Please upload at least one image before publishing.");
+                      return;
+                    }
+                    try {
+                      let uploadedURLs = [];
+                      if (newImages.length > 0) uploadedURLs = await Promise.all(newImages.map(uploadToCloudinary));
+                      const finalImages = [...images, ...uploadedURLs].slice(0, 4);
+                      const listingRef = doc(db, "listings", listing.id);
+                      await updateDoc(listingRef, {
+                        title,
+                        category,
+                        experienceLevel,
+                      
+                        price: parseFloat(price),
+                        priceType,
+                        promoCode,
+                        discount: discount ? parseFloat(discount) : null,
+                        description,
+                        images: finalImages,
+                        latitude: lat,
+                        longitude: lng,
+                        location: selectedAddress,
+                        status: "Active",
+                      });
+                      alert("🎉 Experience published successfully!");
+                      onClose();
+                      updateHostPoints(listing.hostId, 10);
+                      window.dispatchEvent(new Event("refreshListings"));
+                    } catch (error) {
+                      console.error("Error publishing experience:", error);
+                      alert("Failed to publish listing.");
+                    }
+                  }}
+                  className="bg-green-700 text-white py-2 rounded-lg w-40 hover:bg-green-600 transition duration-300 font-medium"
+                >
+                  Publish
+                </button>
+              )}
+              <button type="submit" disabled={uploading} className={`bg-olive-dark text-white py-2 rounded-lg w-40 hover:bg-olive transition duration-300 font-medium ${uploading ? "opacity-60 cursor-not-allowed" : ""}`}>
+                {uploading ? "Saving..." : "Save Changes"}
               </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={uploading}
-              className={`bg-olive-dark text-white py-2 rounded-lg w-44 hover:bg-olive transition duration-300 font-medium ${
-                uploading ? "opacity-60 cursor-not-allowed" : ""
-              }`}
-            >
-              {uploading ? "Saving..." : "Save Changes"}
-            </button>
           </div>
         </form>
       </div>
