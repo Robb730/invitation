@@ -14,7 +14,16 @@ import {
 import { db, auth } from "../../firebaseConfig";
 import Navbar from "./homepage-comp/Navbar";
 import Footer from "./homepage-comp/Footer";
-import { ChevronLeft, ChevronRight, X, Calendar, Tag, MessageCircle, MapPin, Star } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Calendar,
+  Tag,
+  MessageCircle,
+  MapPin,
+  Star,
+} from "lucide-react";
 import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
@@ -46,7 +55,7 @@ const ServicesDetails = () => {
   const [hostName, setHostName] = useState("Unknown Host");
   const [hostPic, setHostPic] = useState("pic");
   const [selectedIndex, setSelectedIndex] = useState(null);
-  
+
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [promoCode, setPromoCode] = useState("");
@@ -92,54 +101,51 @@ const ServicesDetails = () => {
   ]);
 
   useEffect(() => {
-      const fetchRatings = async () => {
-        try {
-          const ratingsRef = collection(db, "ratings");
-          const q = query(ratingsRef, where("listingId", "==", id));
-          const snapshot = await getDocs(q);
-          const allRatings = snapshot.docs.map((doc) => doc.data());
-  
-          const ratingsWithComments = allRatings.filter(
-            (r) => r.comment && r.comment.trim() !== ""
-          );
-  
-          const avg =
-            allRatings.length > 0
-              ? allRatings.reduce((sum, r) => sum + (r.rating || 0), 0) /
-                allRatings.length
-              : 0;
-  
-          setRatings({
-            all: allRatings,
-            withComments: ratingsWithComments,
-          });
-          setAverageRating(avg);
-        } catch (err) {
-          console.error("Error fetching ratings:", err);
-        }
-      };
-      fetchRatings();
-    }, [id]);
-  
-    // Chat listener
-    useEffect(() => {
+    const fetchRatings = async () => {
+      try {
+        const ratingsRef = collection(db, "ratings");
+        const q = query(ratingsRef, where("listingId", "==", id));
+        const snapshot = await getDocs(q);
+        const allRatings = snapshot.docs.map((doc) => doc.data());
+
+        const ratingsWithComments = allRatings.filter(
+          (r) => r.comment && r.comment.trim() !== ""
+        );
+
+        const avg =
+          allRatings.length > 0
+            ? allRatings.reduce((sum, r) => sum + (r.rating || 0), 0) /
+              allRatings.length
+            : 0;
+
+        setRatings({
+          all: allRatings,
+          withComments: ratingsWithComments,
+        });
+        setAverageRating(avg);
+      } catch (err) {
+        console.error("Error fetching ratings:", err);
+      }
+    };
+    fetchRatings();
+  }, [id]);
+
+  // Chat listener
+  useEffect(() => {
     if (!user || !listing) return;
-  
+
     // 1️⃣ Look for any existing chat where participants array contains both the guest and the host
     const chatsRef = collection(db, "chats");
-    const q = query(
-      chatsRef,
-      where("participants", "array-contains", user.id)
-    );
-  
+    const q = query(chatsRef, where("participants", "array-contains", user.id));
+
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       // 2️⃣ Filter the chat docs to find one that includes the host as well
-      const existingChat = snapshot.docs.find(
-        (doc) => doc.data().participants.includes(listing.hostId)
+      const existingChat = snapshot.docs.find((doc) =>
+        doc.data().participants.includes(listing.hostId)
       );
-  
+
       let chatId;
-  
+
       if (existingChat) {
         // 3️⃣ If found, use that chat’s ID
         chatId = existingChat.id;
@@ -152,43 +158,45 @@ const ServicesDetails = () => {
           updatedAt: serverTimestamp(),
         });
       }
-  
+
       // 5️⃣ Attach real-time listener to that chat’s messages
       const messagesRef = collection(db, "chats", chatId, "messages");
       const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
-  
+
       const unsubMessages = onSnapshot(messagesQuery, (msgSnap) => {
         const msgs = msgSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setMessages(msgs);
       });
-  
+
       // Cleanup inner listener
       return () => unsubMessages();
     });
-  
+
     // Cleanup outer listener
     return () => unsubscribe();
   }, [user, listing]);
-  
-  
-    const handleSendMessage = async () => {
+
+  const handleSendMessage = async () => {
     if (!messageText.trim() || !user || !listing) return;
-  
+
     try {
       // 1️⃣ Check if there's already a chat between this guest and host
       const chatsRef = collection(db, "chats");
-      const q = query(chatsRef, where("participants", "array-contains", user.id));
-      const snap = await getDocs(q);
-  
-      // 2️⃣ Find one that also includes the host
-      const existingChat = snap.docs.find(
-        (doc) => doc.data().participants.includes(listing.hostId)
+      const q = query(
+        chatsRef,
+        where("participants", "array-contains", user.id)
       );
-  
+      const snap = await getDocs(q);
+
+      // 2️⃣ Find one that also includes the host
+      const existingChat = snap.docs.find((doc) =>
+        doc.data().participants.includes(listing.hostId)
+      );
+
       let chatId;
       const hostId = listing.hostId;
       const guestId = user.id;
-  
+
       if (existingChat) {
         // 3️⃣ Reuse existing chat
         chatId = existingChat.id;
@@ -197,7 +205,7 @@ const ServicesDetails = () => {
           lastMessage: messageText,
           updatedAt: serverTimestamp(),
         });
-  
+
         // 4️⃣ Add message to existing chat
         await addDoc(collection(db, "chats", chatId, "messages"), {
           senderId: guestId,
@@ -208,7 +216,7 @@ const ServicesDetails = () => {
         // 5️⃣ Create a new chat between this guest and host
         chatId = `${guestId}_${hostId}`;
         const chatRef = doc(db, "chats", chatId);
-  
+
         await setDoc(chatRef, {
           participants: [guestId, hostId],
           listingId: listing.id || id,
@@ -216,7 +224,7 @@ const ServicesDetails = () => {
           updatedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
         });
-  
+
         // 6️⃣ Add initial "query note"
         await addDoc(collection(db, "chats", chatId, "messages"), {
           senderId: "system",
@@ -224,7 +232,7 @@ const ServicesDetails = () => {
           createdAt: serverTimestamp(),
           system: true,
         });
-  
+
         // 7️⃣ Add user’s first message
         await addDoc(collection(db, "chats", chatId, "messages"), {
           senderId: guestId,
@@ -232,7 +240,7 @@ const ServicesDetails = () => {
           createdAt: serverTimestamp(),
         });
       }
-  
+
       // 8️⃣ Clear the input
       setMessageText("");
     } catch (err) {
@@ -320,30 +328,30 @@ const ServicesDetails = () => {
 
   // 🔹 Fetch host info
   useEffect(() => {
-      const fetchHostInfo = async () => {
-        if (!listing?.hostId) return;
-        try {
-          const hostRef = doc(db, "users", listing.hostId);
-          const hostSnap = await getDoc(hostRef);
-          if (hostSnap.exists()) {
-            const data = hostSnap.data();
-            setHostName(data.fullName || data.name || "Unknown Host");
-            setHostPic(data.profilePic || "pic");
-            //fetch host tier
-  
-            const hostTier = doc(db, "hostPoints", listing.hostId);
-            const hostTierSnap = await getDoc(hostTier);
-            if (hostTierSnap.exists()) {
-              const tierData = hostTierSnap.data();
-              setHostTier(tierData.tier || "Bronze");
-            }
+    const fetchHostInfo = async () => {
+      if (!listing?.hostId) return;
+      try {
+        const hostRef = doc(db, "users", listing.hostId);
+        const hostSnap = await getDoc(hostRef);
+        if (hostSnap.exists()) {
+          const data = hostSnap.data();
+          setHostName(data.fullName || data.name || "Unknown Host");
+          setHostPic(data.profilePic || "pic");
+          //fetch host tier
+
+          const hostTier = doc(db, "hostPoints", listing.hostId);
+          const hostTierSnap = await getDoc(hostTier);
+          if (hostTierSnap.exists()) {
+            const tierData = hostTierSnap.data();
+            setHostTier(tierData.tier || "Bronze");
           }
-        } catch (err) {
-          console.error("Error fetching host:", err);
         }
-      };
-      fetchHostInfo();
-    }, [listing]);
+      } catch (err) {
+        console.error("Error fetching host:", err);
+      }
+    };
+    fetchHostInfo();
+  }, [listing]);
 
   // 🔹 Fetch booked dates
   useEffect(() => {
@@ -669,15 +677,17 @@ const ServicesDetails = () => {
               About this service
             </h3>
             {averageRating > 0 && (
-                  <span className="bg-yellow-50 text-yellow-600 px-3 py-1.5 rounded-full flex items-center gap-1.5 text-sm font-medium shadow-sm border border-yellow-100 w-fit">
-                    <Star size={16} fill="currentColor" />
-                    {averageRating.toFixed(1)}
-                    <span className="text-gray-500 text-xs">
-                      ({ratings.all?.length || 0})
-                    </span>
-                  </span>
-                )}
-            <p className="text-gray-800 leading-relaxed text-sm md:text-base">{listingDetails}</p>
+              <span className="bg-yellow-50 text-yellow-600 px-3 py-1.5 rounded-full flex items-center gap-1.5 text-sm font-medium shadow-sm border border-yellow-100 w-fit">
+                <Star size={16} fill="currentColor" />
+                {averageRating.toFixed(1)}
+                <span className="text-gray-500 text-xs">
+                  ({ratings.all?.length || 0})
+                </span>
+              </span>
+            )}
+            <p className="text-gray-800 leading-relaxed text-sm md:text-base">
+              {listingDetails}
+            </p>
             <div className="mt-6 border-t pt-5 text-gray-600 text-sm md:text-base">
               {listing.description}
             </div>
@@ -1142,7 +1152,8 @@ const ServicesDetails = () => {
                     // Check if selected date is booked
                     const isBooked = bookedDates.some(
                       (b) =>
-                        new Date(b).toDateString() === selectedDate.toDateString()
+                        new Date(b).toDateString() ===
+                        selectedDate.toDateString()
                     );
 
                     if (isBooked) {
@@ -1313,10 +1324,12 @@ const ServicesDetails = () => {
                         guestId: auth.currentUser.uid,
                         hostId: listing.hostId,
                         bookedDate: format(startDate, "yyyy-MM-dd"),
-                        
-                        totalAmount: Number( discount
-                          ? listing.price - listing.price * (discount / 100)
-                          : listing.price),
+
+                        totalAmount: Number(
+                          discount
+                            ? listing.price - listing.price * (discount / 100)
+                            : listing.price
+                        ),
                         discountApplied: discount,
                         paymentId: order.id,
                         paymentStatus: order.status,
@@ -1359,13 +1372,13 @@ const ServicesDetails = () => {
                       alert("Reservation confirmed and payment successful!");
                       updateHostPoints(listing.hostId, 20);
                       addNotification(
-                                              "Reservation",
-                                              id,
-                                              listing.title,
-                                              auth.currentUser.uid,
-                                              listing.hostId,
-                                              20
-                                            );
+                        "Reservation",
+                        id,
+                        listing.title,
+                        auth.currentUser.uid,
+                        listing.hostId,
+                        20
+                      );
 
                       setShowSummary(false);
                     } catch (err) {

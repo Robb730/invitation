@@ -146,7 +146,7 @@ const HostMessages = () => {
   };
 
   return (
-  <div className="flex rounded-3xl h-screen md:h-[32rem] overflow-hidden">
+  <div className="flex rounded-3xl h-[85vh] sm:h-[90vh] md:h-[32rem] overflow-hidden">
 
     {/* 🧭 Left Panel - Conversations List */}
     <div
@@ -221,13 +221,14 @@ const HostMessages = () => {
 
     {/* 💬 Chat Panel */}
     <div
-      className={`
-        relative w-full md:w-2/3 flex flex-col bg-white 
-        transition-all duration-300
-        h-[88vh] md:h-auto
-        ${selectedConversation ? "flex" : "hidden md:flex"}
-      `}
-    >
+  className={`
+    relative w-full md:w-2/3 flex flex-col bg-white 
+    transition-all duration-300
+    h-[85vh] md:h-auto
+    ${selectedConversation ? "flex rounded-none md:rounded-3xl" : "hidden md:flex"}
+  `}
+>
+
       {selectedConversation ? (
         <>
           {/* Header */}
@@ -305,7 +306,7 @@ const HostMessages = () => {
           </div>
 
           {/* Input Box */}
-          <div className="border-t border-gray-200/50 p-4 md:p-6 rounded-3xl">
+          <div className="border-t border-gray-200/50 p-3 md:p-6 md:rounded-b-3xl">
             <div className="flex items-end gap-3">
               <div className="flex-1 relative">
                 <input

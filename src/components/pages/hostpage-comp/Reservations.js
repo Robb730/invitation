@@ -51,10 +51,8 @@ const Reservations = () => {
   const [showCalendar, setShowCalendar] = useState(false);
 
   // Filtered reservations for calendar
-  
 
   // Convert reservations to DateRange format for highlighting
-  
 
   // 🔹 Detect logged-in host
   useEffect(() => {
@@ -209,61 +207,72 @@ const Reservations = () => {
   return (
     <div className="bg-gradient-to-br from-white to-gray-50/50 rounded-3xl shadow-2xl p-8 w-full max-w-6xl mx-auto mt-10 min-h-[70vh] border border-white/60">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-olive-dark tracking-tight">
-            Reservations
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Manage and track your property bookings
-          </p>
-          {/* <button
-            onClick={() => setShowCalendar(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 hover:shadow-lg"
+  {/* Left side: Title + Subtitle */}
+  <div className="text-center md:text-left">
+    <h2 className="text-2xl sm:text-3xl font-bold text-olive-dark tracking-tight">
+      Reservations
+    </h2>
+    <p className="text-xs sm:text-sm text-gray-600 mt-1">
+      Manage and track your property bookings
+    </p>
+  </div>
+
+  {/* Right side: View Calendar + Filters */}
+  <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center md:justify-end gap-3 md:gap-4 w-full md:w-auto">
+    {/* View Calendar button */}
+    <button
+      onClick={() => setShowCalendar(true)}
+      className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 sm:px-5 py-2.5 
+                 rounded-xl text-sm font-semibold 
+                 bg-gradient-to-r from-olive to-olive-dark text-white shadow-md 
+                 hover:from-emerald-500 hover:to-olive-dark 
+                 transition-all duration-200 hover:shadow-lg hover:scale-[1.03] 
+                 active:scale-95"
+    >
+      <Calendar size={16} />
+      View Calendar
+    </button>
+
+    {/* Filter Buttons */}
+    <div className="flex flex-wrap justify-center sm:justify-end gap-2 w-full sm:w-auto">
+      {["all", "Confirmed", "Completed", "Cancelled", "Cancellation Requested"].map(
+        (type) => (
+          <button
+            key={type}
+            onClick={() => setFilter(type)}
+            className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 
+                       rounded-xl text-xs sm:text-sm font-medium 
+                       transition-all duration-200 w-full sm:w-auto ${
+              filter === type
+                ? "bg-olive-dark text-white shadow-lg scale-105"
+                : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-gray-300 hover:shadow-md"
+            }`}
           >
-            <Calendar size={16} />
-            View Calendar
-          </button> */}
-        </div>
-        
-
-
-
-        {/* 🔹 Filter Buttons */}
-        <div className="flex flex-wrap gap-2">
-          
-          {[
-            "all",
-            "Confirmed",
-            "Completed",
-            "Cancelled",
-            "Cancellation Requested",
-          ].map((type) => (
-            <button
-              key={type}
-              onClick={() => setFilter(type)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                filter === type
-                  ? "bg-olive-dark text-white shadow-lg scale-105"
-                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-gray-300 hover:shadow-md"
-              }`}
-            >
-              <Filter size={14} />
-              {type === "Cancellation Requested"
-                ? "Cancellation Requests"
-                : type.charAt(0).toUpperCase() + type.slice(1)}
-            </button>
-          ))}
-
-          
-        </div>
-      </div>
+            <Filter size={14} />
+            {type === "Cancellation Requested"
+              ? "Cancellation Requests"
+              : type.charAt(0).toUpperCase() + type.slice(1)}
+          </button>
+        )
+      )}
+    </div>
+  </div>
+</div>
 
       {showCalendar && (
         <CalendarView
           reservations={reservations.filter(
-            (r) => r.status === "Confirmed" || r.status === "Completed"
+            (r) =>
+              r.status?.toLowerCase() === "confirmed" ||
+              r.status?.toLowerCase() === "completed"
           )}
           onClose={() => setShowCalendar(false)}
+          listingsMap={Object.fromEntries(
+            reservations.map((r) => [
+              r.listingId,
+              { superCategory: r.listingCategory },
+            ])
+          )}
         />
       )}
 
@@ -355,7 +364,11 @@ const Reservations = () => {
                     <p className="text-sm font-semibold text-gray-800">
                       {reservation.listingCategory === "Homes"
                         ? `${reservation.checkIn} → ${reservation.checkOut}`
-                        : reservation.checkIn}
+                        : reservation.listingCategory === "Experiences"
+                        ? `${reservation.checkIn}`
+                        : reservation.listingCategory === "Services"
+                        ? `${reservation.bookedDate}`
+                        : `${reservation.checkIn}`}
                     </p>
                   </div>
                 </div>

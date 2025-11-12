@@ -30,8 +30,7 @@ import PaymentCashoutsPanel from "./admin-comp/PaymentCashoutsPanel";
 import ServiceFeePanel from "./admin-comp/ServiceFeeAndPolicyPanel";
 import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-
-
+import WishlistsView from "./admin-comp/WishlistsView";
 
 const AdminPage = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -52,15 +51,13 @@ const AdminPage = () => {
 
   const navigate = useNavigate();
 
-
-
   // 🔹 Load admin data
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
-    navigate("/"); // redirect if not logged in
-    return;
-  }
+        navigate("/"); // redirect if not logged in
+        return;
+      }
 
       try {
         const docRef = doc(db, "users", currentUser.uid);
@@ -70,12 +67,12 @@ const AdminPage = () => {
           setAdminData(userData);
 
           if (userData.role?.toLowerCase() === "guest") {
-        navigate("/"); // redirect to home or login
-        return;
-      } else if (userData.role?.toLowerCase() === "host") {
-        navigate("/hostpage");
-        return;
-      }
+            navigate("/"); // redirect to home or login
+            return;
+          } else if (userData.role?.toLowerCase() === "host") {
+            navigate("/hostpage");
+            return;
+          }
         } else {
           console.warn("No admin document found in Firestore for this user.");
         }
@@ -92,15 +89,14 @@ const AdminPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-  const handleClickOutside = (e) => {
-    if (!e.target.closest(".profile-dropdown")) {
-      setShowLogoutModal(false);
-    }
-  };
-  document.addEventListener("click", handleClickOutside);
-  return () => document.removeEventListener("click", handleClickOutside);
-}, []);
-
+    const handleClickOutside = (e) => {
+      if (!e.target.closest(".profile-dropdown")) {
+        setShowLogoutModal(false);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   // Filter reservations in real-time
   const filteredReservations = allReservations.filter((r) => {
@@ -221,7 +217,6 @@ const AdminPage = () => {
         // Query all added users TODAY (no time needed)
         const usersRef = collection(db, "users");
 
-        
         const userSnapshot = await getDocs(usersRef);
 
         // e.g. "Sun Nov 09 2025"
@@ -458,80 +453,293 @@ const AdminPage = () => {
     return "bg-white border-gray-100";
   };
 
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        // Fetch ALL listings first
-        const listingsSnap = await getDocs(collection(db, "listings"));
-        const listings = listingsSnap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
+  // 🖨️ Generate Printable Report
+  const handlePrintReport = () => {
+    const confirmedCount = filteredReservations.filter(
+      (r) => r.status?.toLowerCase() === "confirmed"
+    ).length;
+    const completedCount = filteredReservations.filter(
+      (r) => r.status?.toLowerCase() === "completed"
+    ).length;
+    const cancelledCount = filteredReservations.filter(
+      (r) => r.status?.toLowerCase() === "cancelled"
+    ).length;
 
-        // Fetch ALL ratings
-        const ratingsSnap = await getDocs(collection(db, "ratings"));
-        const ratings = ratingsSnap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
+    const printWindow = window.open("", "_blank", "width=900,height=700");
 
-        // Fetch ALL reservations
-        const reservationSnap = await getDocs(collection(db, "reservations"));
-        const reservations = reservationSnap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
+    const reportHTML = `
+  <html>
+    <head>
+      <title>KuboHub | Reservations Report</title>
+      <style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    margin: 40px;
+    background: #f8f9f6;
+    color: #2f2f2f;
+    line-height: 1.5;
+  }
 
-        // Group ratings by listing
-        const ratingMap = {};
-        ratings.forEach((r) => {
-          if (!ratingMap[r.listingId]) ratingMap[r.listingId] = [];
-          ratingMap[r.listingId].push(r.rating);
-        });
+  header {
+    text-align: center;
+    margin-bottom: 30px;
+  }
 
-        // Count bookings (Confirmed/Completed)
-        const bookingMap = {};
-        reservations.forEach((res) => {
-          if (!["confirmed", "completed"].includes(res.status?.toLowerCase()))
-            return;
-          bookingMap[res.listingId] = (bookingMap[res.listingId] || 0) + 1;
-        });
+  header img {
+    height: 70px;
+    margin-bottom: 8px;
+  }
 
-        // Build leaderboard items FOR ALL LISTINGS
-        const leaderboardData = listings.map((listing) => {
-          const listingId = listing.id;
+  h1 {
+    font-size: 30px;
+    margin: 0;
+    color: #3d4f3a;
+  }
 
-          const ratingsArr = ratingMap[listingId] || [];
-          const avgRating =
-            ratingsArr.length > 0
-              ? ratingsArr.reduce((a, b) => a + b, 0) / ratingsArr.length
-              : 0;
+  h2 {
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 4px;
+    color: #666;
+  }
 
-          return {
-            listingId,
-            title: listing.title || "Untitled",
-            avgRating,
-            reviewCount: ratingsArr.length,
-            bookingCount: bookingMap[listingId] || 0,
-          };
-        });
+  .summary {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin: 25px 0;
+    flex-wrap: wrap;
+  }
 
-        // Ranking priority: Rating → Bookings → Review Count
-        leaderboardData.sort((a, b) => {
-          if (b.avgRating !== a.avgRating) return b.avgRating - a.avgRating;
-          if (b.bookingCount !== a.bookingCount)
-            return b.bookingCount - a.bookingCount;
-          return b.reviewCount - a.reviewCount;
-        });
+  .summary-box {
+    background: linear-gradient(135deg, #ffffff, #f0f0f0);
+    border-radius: 12px;
+    padding: 15px 25px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    text-align: center;
+    min-width: 140px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
 
-        setLeaderboard(leaderboardData);
-      } catch (err) {
-        console.error("Error building leaderboard:", err);
-      }
-    };
+  .summary-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+  }
 
-    fetchLeaderboard();
-  }, []);
+  .summary-box h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #3d4f3a;
+  }
+
+  .summary-box p {
+    margin: 6px 0 0;
+    font-size: 20px;
+    font-weight: bold;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  th, td {
+    padding: 12px 16px;
+    font-size: 13px;
+    border: 1px
+  }
+
+  th {
+    background: #e8eddf;
+    color: #3d4f3a;
+    text-align: left;
+    font-weight: 600;
+  }
+
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+
+  tr:hover {
+    background-color: #f1f7ed;
+  }
+
+  .status {
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 9999px;
+    display: inline-block;
+    font-size: 0.875rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .confirmed { background: #d1fae5; color: #065f46; }
+  .completed { background: #bfdbfe; color: #1e3a8a; }
+  .cancelled { background: #fee2e2; color: #991b1b; }
+
+  footer {
+    margin-top: 40px;
+    font-size: 12px;
+    text-align: center;
+    color: #777;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+  }
+    
+</style>
+
+    </head>
+    <body>
+      <header>
+        <img src="${logo}" alt="KuboHub Logo" />
+        <h1>KuboHub Reservation Report</h1>
+        <h2>${new Date().toLocaleDateString()}</h2>
+      </header>
+
+      <section class="summary">
+        <div class="summary-box confirmed">
+          <h3>Confirmed</h3>
+          <p>${confirmedCount}</p>
+        </div>
+        <div class="summary-box completed">
+          <h3>Completed</h3>
+          <p>${completedCount}</p>
+        </div>
+        <div class="summary-box cancelled">
+          <h3>Cancelled</h3>
+          <p>${cancelledCount}</p>
+        </div>
+      </section>
+
+      <table>
+        <thead>
+  <tr>
+    <th>#</th> <!-- Number column -->
+    <th>Guest</th>
+    <th>Host</th>
+    <th>Listing</th>
+    <th>Date</th>
+    <th>Status</th>
+  </tr>
+</thead>
+
+        <tbody>
+  ${filteredReservations
+    .map(
+      (r, index) => ` 
+      <tr>
+        <td>${index + 1}</td> <!-- Auto-numbering -->
+        <td>${r.guestName || "—"}</td>
+        <td>${r.hostName || "—"}</td>
+        <td>${r.listingName || "—"}</td>
+        <td>${r.createdAt ? r.createdAt.toDate().toLocaleDateString() : "—"}</td>
+        <td><span class="status ${r.status?.toLowerCase() || ""}">${r.status || "Pending"}</span></td>
+      </tr>
+    `
+    )
+    .join("")}
+</tbody>
+
+      </table>
+
+      <footer>
+        Generated by <strong>KuboHub Admin</strong> • ${new Date().toLocaleString()}
+      </footer>
+    </body>
+  </html>
+  `;
+
+    printWindow.document.open();
+    printWindow.document.write(reportHTML);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+ useEffect(() => {
+  const fetchLeaderboard = async () => {
+    try {
+      // Fetch ALL listings first
+      const listingsSnap = await getDocs(collection(db, "listings"));
+      const listings = listingsSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      // Fetch ALL ratings
+      const ratingsSnap = await getDocs(collection(db, "ratings"));
+      const ratings = ratingsSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      // Fetch ALL reservations
+      const reservationSnap = await getDocs(collection(db, "reservations"));
+      const reservations = reservationSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      // Group ratings by listing
+      const ratingMap = {};
+      ratings.forEach((r) => {
+        if (!ratingMap[r.listingId]) ratingMap[r.listingId] = [];
+        ratingMap[r.listingId].push(r.rating);
+      });
+
+      // Count bookings (Confirmed/Completed)
+      const bookingMap = {};
+      reservations.forEach((res) => {
+        if (!["confirmed", "completed"].includes(res.status?.toLowerCase()))
+          return;
+        bookingMap[res.listingId] = (bookingMap[res.listingId] || 0) + 1;
+      });
+
+      // Build leaderboard items FOR ALL LISTINGS
+      const leaderboardData = listings.map((listing) => {
+        const listingId = listing.id;
+
+        const ratingsArr = ratingMap[listingId] || [];
+        const avgRating =
+          ratingsArr.length > 0
+            ? ratingsArr.reduce((a, b) => a + b, 0) / ratingsArr.length
+            : 0;
+
+        const bookingCount = bookingMap[listingId] || 0;
+        const reviewCount = ratingsArr.length;
+
+        // Weighted score calculation
+        const score =
+          avgRating * 5 +      // rating weight
+          bookingCount * 1 +   // booking weight
+          reviewCount * 2;     // review count weight
+
+        return {
+          listingId,
+          title: listing.title || "Untitled",
+          avgRating,
+          reviewCount,
+          bookingCount,
+          score, // store the computed score
+        };
+      });
+
+      // Sort by the combined score
+      leaderboardData.sort((a, b) => b.score - a.score);
+
+      setLeaderboard(leaderboardData);
+    } catch (err) {
+      console.error("Error building leaderboard:", err);
+    }
+  };
+
+  fetchLeaderboard();
+}, []);
+
 
   // 🔸 Loading
   if (loading)
@@ -613,85 +821,149 @@ const AdminPage = () => {
 
             {/* Recent Activity */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-olive to-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-white">
+              <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-gradient-to-r from-olive to-white">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-white truncate">
                       Recent Reservations
                     </h2>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
                       Latest booking activity on the platform
                     </p>
                   </div>
-                  <button onClick={() => setActiveTab("reservations")} className="px-4 py-2 text-sm font-medium text-olive-dark hover:bg-olive-dark hover:text-white rounded-lg transition-colors flex items-center gap-2">
-                    View All
-                    <ChevronRight className="w-4 h-4" />
+                  <button
+                    onClick={() => setActiveTab("reservations")}
+                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-olive-dark hover:bg-olive-dark hover:text-white rounded-lg transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap"
+                  >
+                    <span className="hidden sm:inline">View All</span>
+                    <span className="sm:hidden">All</span>
+                    <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                {recentReservations.length > 0 ? (
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100">
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Guest
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Host
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Listing
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {recentReservations.map((r) => (
-                        <tr
-                          key={r.id}
-                          className="hover:bg-gray-50 transition-colors"
-                        >
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                            {r.guestName || "—"}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {r.hostName || "—"}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {r.listingName || "—"}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            {r.createdAt
-                              ? r.createdAt.toDate().toLocaleDateString()
-                              : "—"}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span
-                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusStyles(
-                                r.status
-                              )}`}
-                            >
-                              {r.status || "Pending"}
-                            </span>
-                          </td>
+              {recentReservations.length > 0 ? (
+                <>
+                  {/* Desktop Table View - Hidden on Mobile */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Guest
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Host
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Listing
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Date
+                          </th>
+                          <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Status
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="px-6 py-12 text-center text-gray-500">
-                    <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p className="font-medium">No recent reservations</p>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {recentReservations.map((r) => (
+                          <tr
+                            key={r.id}
+                            className="hover:bg-gray-50 transition-colors"
+                          >
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                              {r.guestName || "—"}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {r.hostName || "—"}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900">
+                              {r.listingName || "—"}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500">
+                              {r.createdAt
+                                ? r.createdAt.toDate().toLocaleDateString()
+                                : "—"}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusStyles(
+                                  r.status
+                                )}`}
+                              >
+                                {r.status || "Pending"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </div>
+
+                  {/* Mobile Card View - Hidden on Desktop */}
+                  <div className="md:hidden divide-y divide-gray-200">
+                    {recentReservations.map((r) => (
+                      <div key={r.id} className="overflow-hidden">
+                        {/* Card Header with Listing Name and Status */}
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-gray-900 truncate">
+                              {r.listingName || "—"}
+                            </h3>
+                          </div>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap shadow-sm ${getStatusStyles(
+                              r.status
+                            )}`}
+                          >
+                            {r.status || "Pending"}
+                          </span>
+                        </div>
+
+                        {/* Card Body with Details */}
+                        <div className="bg-white px-4 py-3 space-y-2.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                              Guest
+                            </span>
+                            <span className="text-sm font-medium text-gray-900 truncate text-right flex-1">
+                              {r.guestName || "—"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                              Host
+                            </span>
+                            <span className="text-sm text-gray-700 truncate text-right flex-1">
+                              {r.hostName || "—"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 pt-1 border-t border-gray-100">
+                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                              Date
+                            </span>
+                            <span className="text-sm text-gray-600 whitespace-nowrap">
+                              {r.createdAt
+                                ? r.createdAt.toDate().toLocaleDateString()
+                                : "—"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="px-4 sm:px-6 py-8 sm:py-12 text-center text-gray-500">
+                  <Calendar className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 text-gray-300" />
+                  <p className="font-medium text-sm sm:text-base">
+                    No recent reservations
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Booking Insights */}
@@ -778,15 +1050,24 @@ const AdminPage = () => {
                     Manage and track all platform bookings
                   </p>
                 </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search reservations..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2.5 w-full md:w-80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
+
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search reservations..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2.5 w-full md:w-80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <button
+                    onClick={() => handlePrintReport()}
+                    className="px-4 py-2.5 bg-olive text-white rounded-lg hover:bg-olive-dark transition-all text-sm font-medium shadow-sm"
+                  >
+                    🖨️ Print Report
+                  </button>
                 </div>
               </div>
 
@@ -973,24 +1254,30 @@ const AdminPage = () => {
             )}
           </div>
         );
-        case "rewards": 
-        return(
+      case "rewards":
+        return (
           <>
-          <RewardsAdminPanel/>
+            <RewardsAdminPanel />
           </>
         );
-        case "service fee & policy":
-          return(
-            <>
-            <ServiceFeePanel/>
-            </>
-          );
-          case "payment cashouts":
-          return(
-            <>
-              <PaymentCashoutsPanel/>
-            </>
-          );
+      case "service fee & policy":
+        return (
+          <>
+            <ServiceFeePanel />
+          </>
+        );
+      case "payment cashouts":
+        return (
+          <>
+            <PaymentCashoutsPanel />
+          </>
+        );
+      case "wishlists":
+        return (
+          <>
+            <WishlistsView />
+          </>
+        );
       default:
         return null;
     }
@@ -998,101 +1285,102 @@ const AdminPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-  {/* ✅ Header + Tabs */}
-  <header className="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
-    {/* ✅ Top Header */}
-    <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-center sm:items-center justify-between gap-3 sm:gap-0">
-      {/* Logo + Title */}
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-md flex items-center justify-center shrink-0">
-          <img src={logo} alt="Logo" className="w-full h-full object-cover" />
+      {/* ✅ Header + Tabs */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
+        {/* ✅ Top Header */}
+        <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-center sm:items-center justify-between gap-3 sm:gap-0">
+          {/* Logo + Title */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-md flex items-center justify-center shrink-0">
+              <img
+                src={logo}
+                alt="Logo"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-olive to-olive-darker bg-clip-text text-transparent leading-tight">
+                KuboHub <span className="font-thin">Admin</span>
+              </h1>
+              <p className="text-[11px] sm:text-xs text-gray-500">
+                Manage your platform
+              </p>
+            </div>
+          </div>
+
+          {/* ✅ Admin Info */}
+          <div className="flex items-center gap-3 pl-0 sm:pl-4 border-t sm:border-t-0 sm:border-l border-gray-200 w-full sm:w-auto justify-between sm:justify-end pt-3 sm:pt-0">
+            <div className="text-left sm:text-right">
+              <p className="text-sm sm:text-base font-semibold truncate max-w-[120px] sm:max-w-[180px]">
+                {adminData?.name || "Admin User"}
+              </p>
+              <p className="text-xs text-gray-500 truncate max-w-[160px] sm:max-w-[200px]">
+                {adminData?.email || "admin@platform.com"}
+              </p>
+            </div>
+            <div className="relative profile-dropdown">
+              {/* Profile Picture */}
+              <img
+                src={adminData?.profilePic}
+                alt="Admin"
+                onClick={() => setShowLogoutModal((prev) => !prev)}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover cursor-pointer border border-gray-200 hover:ring-2 hover:ring-olive transition-all"
+              />
+
+              {/* Dropdown Modal */}
+              {showLogoutModal && (
+                <div
+                  className="absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50"
+                  onMouseLeave={() => setShowLogoutModal(false)}
+                >
+                  <button
+                    onClick={async () => {
+                      try {
+                        await signOut(auth);
+                        window.location.href = "/"; // redirect to login or home
+                      } catch (error) {
+                        console.error("Logout error:", error);
+                      }
+                    }}
+                    className="w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 text-left font-medium transition-all"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-olive to-olive-darker bg-clip-text text-transparent leading-tight">
-            KuboHub <span className="font-thin">Admin</span>
-          </h1>
-          <p className="text-[11px] sm:text-xs text-gray-500">
-            Manage your platform
-          </p>
+
+        {/* ✅ Tabs Navigation */}
+        <div className="px-2 sm:px-6 flex gap-1 overflow-x-auto scrollbar-hide">
+          {[
+            "dashboard",
+            "reservations",
+            "reviews",
+            "rewards",
+            "service fee & policy",
+            "payment cashouts",
+            "wishlists",
+          ].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm transition-all whitespace-nowrap rounded-t-lg ${
+                activeTab === tab
+                  ? "text-olive-dark border-b-2 border-olive-dark bg-green-50/50"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
         </div>
-      </div>
+      </header>
 
-      {/* ✅ Admin Info */}
-      <div className="flex items-center gap-3 pl-0 sm:pl-4 border-t sm:border-t-0 sm:border-l border-gray-200 w-full sm:w-auto justify-between sm:justify-end pt-3 sm:pt-0">
-        <div className="text-left sm:text-right">
-          <p className="text-sm sm:text-base font-semibold truncate max-w-[120px] sm:max-w-[180px]">
-            {adminData?.name || "Admin User"}
-          </p>
-          <p className="text-xs text-gray-500 truncate max-w-[160px] sm:max-w-[200px]">
-            {adminData?.email || "admin@platform.com"}
-          </p>
-        </div>
-        <div className="relative profile-dropdown">
-  {/* Profile Picture */}
-  <img
-    src={adminData?.profilePic}
-    alt="Admin"
-    onClick={() => setShowLogoutModal((prev) => !prev)}
-    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover cursor-pointer border border-gray-200 hover:ring-2 hover:ring-olive transition-all"
-  />
-
-  {/* Dropdown Modal */}
-  {showLogoutModal && (
-    <div
-      className="absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50"
-      onMouseLeave={() => setShowLogoutModal(false)}
-    >
-      <button
-        onClick={async () => {
-          try {
-            await signOut(auth);
-            window.location.href = "/"; // redirect to login or home
-          } catch (error) {
-            console.error("Logout error:", error);
-          }
-        }}
-        className="w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 text-left font-medium transition-all"
-      >
-        Logout
-      </button>
+      {/* ✅ Main Content */}
+      <main className="p-4 sm:p-6 max-w-7xl mx-auto">{renderTabContent()}</main>
     </div>
-  )}
-</div>
-
-      </div>
-    </div>
-
-    {/* ✅ Tabs Navigation */}
-    <div className="px-2 sm:px-6 flex gap-1 overflow-x-auto scrollbar-hide">
-      {[
-        "dashboard",
-        "reservations",
-        "reviews",
-        "rewards",
-        "service fee & policy",
-        "payment cashouts",
-      ].map((tab) => (
-        <button
-          key={tab}
-          onClick={() => setActiveTab(tab)}
-          className={`px-4 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm transition-all whitespace-nowrap rounded-t-lg ${
-            activeTab === tab
-              ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-          }`}
-        >
-          {tab.charAt(0).toUpperCase() + tab.slice(1)}
-        </button>
-      ))}
-    </div>
-  </header>
-
-  {/* ✅ Main Content */}
-  <main className="p-4 sm:p-6 max-w-7xl mx-auto">
-    {renderTabContent()}
-  </main>
-</div>
-
   );
 };
 
