@@ -8,10 +8,28 @@ import {
   deleteDoc,
   doc,
 } from "firebase/firestore";
-import { Plus, Gift, Trash2, Award, Sparkles, X, Percent, Wallet} from "lucide-react";
+import {
+  Plus,
+  Gift,
+  Trash2,
+  Award,
+  Sparkles,
+  X,
+  Percent,
+  Wallet,
+  Users,
+  Printer,
+} from "lucide-react";
 import { addReward } from "../../../utils/rewardsSystem";
 
-const tiers = ["bronze", "silver", "gold", "platinum", "diamond", "hiraya host"];
+const tiers = [
+  "bronze",
+  "silver",
+  "gold",
+  "platinum",
+  "diamond",
+  "hiraya host",
+];
 
 const RewardsAdminPanel = () => {
   const [selectedTier, setSelectedTier] = useState("silver");
@@ -33,14 +51,16 @@ const RewardsAdminPanel = () => {
 
   const [discountPercent, setDiscountPercent] = useState("");
   const [ewalletAmount, setEwalletAmount] = useState("");
+  const [hosts, setHosts] = useState([]);
+  const [hostFilter, setHostFilter] = useState("All");
 
   const getTypeIcon = () => {
     switch (type) {
-      case 'host-payment':
+      case "host-payment":
         return <Gift className="w-5 h-5" />;
-      case 'reservation-discount':
+      case "reservation-discount":
         return <Percent className="w-5 h-5" />;
-      case 'ewallet-credit':
+      case "ewallet-credit":
         return <Wallet className="w-5 h-5" />;
       default:
         return <Award className="w-5 h-5" />;
@@ -72,6 +92,293 @@ const RewardsAdminPanel = () => {
     const snap = await getDocs(q);
     setRewards(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   }, [selectedTier]);
+  useEffect(() => {
+    const fetchHostsAndTiers = async () => {
+      try {
+        const usersSnap = await getDocs(
+          query(collection(db, "users"), where("role", "==", "host"))
+        );
+        const hostList = [];
+
+        for (const docSnap of usersSnap.docs) {
+          const hostData = docSnap.data();
+          const hostId = docSnap.id;
+          let tier = "Bronze";
+          let points = 0;
+
+          // Try to get their tier info from hostPoints
+          const hostPointDoc = await getDocs(
+            query(collection(db, "hostPoints"), where("__name__", "==", hostId))
+          );
+          if (!hostPointDoc.empty) {
+            const data = hostPointDoc.docs[0].data();
+            tier = data.tier || "Bronze";
+            points = data.points || 0;
+          }
+
+          hostList.push({
+            id: hostId,
+            name: hostData.fullName || hostData.name || "Unnamed Host",
+            email: hostData.email || "N/A",
+            tier,
+            points,
+          });
+        }
+
+        // Sort by tier rank
+        const tierOrder = [
+          "bronze",
+          "silver",
+          "gold",
+          "platinum",
+          "diamond",
+          "hiraya host",
+        ];
+        hostList.sort((a, b) => {
+          const rankA = tierOrder.indexOf(a.tier.toLowerCase());
+          const rankB = tierOrder.indexOf(b.tier.toLowerCase());
+          if (rankA === rankB) return b.points - a.points;
+          return rankB - rankA;
+        });
+
+        setHosts(hostList);
+      } catch (err) {
+        console.error("Error fetching hosts:", err);
+      }
+    };
+
+    fetchHostsAndTiers();
+  }, []);
+
+  const filteredHosts = hosts.filter(
+    (h) =>
+      hostFilter === "All" || h.tier.toLowerCase() === hostFilter.toLowerCase()
+  );
+  const handlePrintHostReport = () => {
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+
+    const filtered = hosts.filter(
+      (h) =>
+        hostFilter === "All" ||
+        h.tier.toLowerCase() === hostFilter.toLowerCase()
+    );
+
+    const reportHTML = `
+    html>
+      <head>
+        <title>KuboHub | Host Tier Report</title>
+        <style>
+          body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 40px;
+            background: #f8f9f6;
+            color: #2f2f2f;
+            line-height: 1.5;
+          }
+          header {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          h1 {
+            font-size: 28px;
+            color: #3d4f3a;
+            margin: 0;
+          }
+          h2 {
+            font-size: 16px;
+            color: #666;
+            margin-top: 6px;
+          }
+          table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+          }
+          th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #ddd;
+          }
+          th {
+            background: #e8eddf;
+            color: #3d4f3a;
+            text-align: left;
+            font-weight: 600;
+          }
+          tr:nth-child(even) { background-color: #f9f9f9; }
+          tr:hover { background-color: #f1f7ed; }
+          footer {
+            margin-top: 40px;
+            font-size: 12px;
+            text-align: center;
+            color: #777;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+          }
+          .tier {
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            display: inline-block;
+            font-size: 0.875rem;
+          }
+          .bronze { background: #fef3c7; color: #92400e; }
+          .silver { background: #f3f4f6; color: #374151; }
+          .gold { background: #fef9c3; color: #92400e; }
+          .platinum { background: #e5e7eb; color: #1f2937; }
+          .diamond { background: #cffafe; color: #0e7490; }
+          .hiraya { background: #d1fae5; color: #065f46; }
+
+          /* Print Styles */
+          @media print {
+            body {
+              margin: 0;
+              padding: 20px;
+              background: white;
+              font-size: 11pt;
+            }
+            
+            header {
+              margin-bottom: 20px;
+            }
+            
+            h1 {
+              font-size: 22pt;
+              color: #000;
+              margin-bottom: 8px;
+            }
+            
+            h2 {
+              font-size: 12pt;
+              color: #333;
+              margin-top: 4px;
+            }
+            
+            table {
+              box-shadow: none;
+              border-radius: 0;
+              border: 1px solid #333;
+              page-break-inside: auto;
+            }
+            
+            thead {
+              display: table-header-group;
+            }
+            
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            
+            th {
+              background: #e8eddf !important;
+              color: #000 !important;
+              border: 1px solid #333;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            td {
+              border: 1px solid #ddd;
+              padding: 8px 12px;
+            }
+            
+            tr:nth-child(even) {
+              background-color: #f5f5f5 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            tr:hover {
+              background-color: transparent !important;
+            }
+            
+            .tier {
+              border: 1px solid #999;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            .bronze { background: #fef3c7 !important; color: #92400e !important; }
+            .silver { background: #f3f4f6 !important; color: #374151 !important; }
+            .gold { background: #fef9c3 !important; color: #92400e !important; }
+            .platinum { background: #e5e7eb !important; color: #1f2937 !important; }
+            .diamond { background: #cffafe !important; color: #0e7490 !important; }
+            .hiraya { background: #d1fae5 !important; color: #065f46 !important; }
+            
+            footer {
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              text-align: center;
+              font-size: 9pt;
+              padding: 10px;
+              border-top: 1px solid #ddd;
+              background: white;
+            }
+            
+            /* Add page numbers */
+            @page {
+              margin: 20mm;
+              @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+              }
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <header>
+          <h1>KuboHub Host Tier Report</h1>
+          <h2>${new Date().toLocaleDateString()} — ${
+      hostFilter === "All" ? "All Tiers" : hostFilter
+    }</h2>
+        </header>
+
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Host Name</th>
+              <th>Email</th>
+              <th>Tier</th>
+              <th>Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered
+              .map(
+                (h, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${h.name}</td>
+                <td>${h.email}</td>
+                <td><span class="tier ${h.tier
+                  .toLowerCase()
+                  .replace(" ", "")}">${h.tier}</span></td>
+                <td>${h.points.toLocaleString()}</td>
+              </tr>`
+              )
+              .join("")}
+          </tbody>
+        </table>
+
+        <footer>
+          Generated by <strong>KuboHub Admin</strong> • ${new Date().toLocaleString()}
+        </footer>
+      </body>
+    </html>
+  `;
+
+    printWindow.document.open();
+    printWindow.document.write(reportHTML);
+    printWindow.document.close();
+    printWindow.print();
+  };
 
   useEffect(() => {
     fetchRewards();
@@ -192,15 +499,20 @@ const RewardsAdminPanel = () => {
             {/* Tier Header */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
               <div className="flex items-center gap-3">
-                <div className={`p-2 sm:p-3 rounded-xl bg-gradient-to-br ${tierColors[selectedTier]} shadow-lg`}>
+                <div
+                  className={`p-2 sm:p-3 rounded-xl bg-gradient-to-br ${tierColors[selectedTier]} shadow-lg`}
+                >
                   <div className="text-xl sm:text-2xl">{TierIcon}</div>
                 </div>
                 <div>
                   <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
-                    {selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)} Tier
+                    {selectedTier.charAt(0).toUpperCase() +
+                      selectedTier.slice(1)}{" "}
+                    Tier
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-500">
-                    {rewards.length} reward{rewards.length !== 1 ? 's' : ''} available
+                    {rewards.length} reward{rewards.length !== 1 ? "s" : ""}{" "}
+                    available
                   </p>
                 </div>
               </div>
@@ -225,7 +537,9 @@ const RewardsAdminPanel = () => {
                 <div className="inline-flex p-4 sm:p-6 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 mb-4">
                   <Gift className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400" />
                 </div>
-                <p className="text-gray-500 text-base sm:text-lg">No rewards yet</p>
+                <p className="text-gray-500 text-base sm:text-lg">
+                  No rewards yet
+                </p>
                 <p className="text-gray-400 text-xs sm:text-sm mt-2">
                   Create your first reward to get started
                 </p>
@@ -280,6 +594,203 @@ const RewardsAdminPanel = () => {
                 ))}
               </div>
             )}
+            {/* Host Tier Overview */}
+            <div className="mt-8 sm:mt-10">
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-lg border border-white/50 overflow-hidden">
+                {/* Header with gradient */}
+                <div className="bg-gradient-to-r from-olive to-olive-dark p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 sm:p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+                        <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-bold text-white">
+                          Host Tiers Overview
+                        </h2>
+                        <p className="text-xs sm:text-sm text-white/80 mt-0.5">
+                          {filteredHosts.length} host{filteredHosts.length !== 1 ? 's' : ''} {hostFilter !== 'All' ? `in ${hostFilter}` : 'total'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handlePrintHostReport}
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl font-semibold transition-all duration-300 text-sm backdrop-blur-sm border border-white/30"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span className="hidden sm:inline">Print Report</span>
+                      <span className="sm:hidden">Print</span>
+                    </button>
+                  </div>
+
+                  {/* Filter Pills */}
+                  <div className="flex gap-2 overflow-x-auto pb-2 mt-4 scrollbar-hide -mx-1 px-1">
+                    {[
+                      "All",
+                      ...tiers.map((t) => t.charAt(0).toUpperCase() + t.slice(1)),
+                    ].map((filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => setHostFilter(filter)}
+                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
+                          hostFilter === filter
+                            ? "bg-white text-olive-dark shadow-md scale-105"
+                            : "bg-white/20 text-white hover:bg-white/30 border border-white/30"
+                        }`}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Table Container */}
+                <div className="p-0">
+                  {/* Desktop Table View */}
+                  <div className="hidden sm:block overflow-x-auto max-h-[400px]">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b-2 border-gray-200">
+                            Host Name
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b-2 border-gray-200">
+                            Email
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b-2 border-gray-200">
+                            Tier
+                          </th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700 border-b-2 border-gray-200">
+                            Points
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredHosts.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan="4"
+                              className="text-center py-12"
+                            >
+                              <div className="flex flex-col items-center gap-3">
+                                <div className="p-4 bg-gray-100 rounded-full">
+                                  <Users className="w-8 h-8 text-gray-400" />
+                                </div>
+                                <p className="text-gray-500 font-medium">
+                                  No hosts found
+                                </p>
+                                <p className="text-gray-400 text-sm">
+                                  {hostFilter !== 'All' ? `No hosts in ${hostFilter} tier` : 'Add hosts to get started'}
+                                </p>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredHosts.map((host) => (
+                            <tr
+                              key={host.id}
+                              className="hover:bg-gray-50 transition-all"
+                            >
+                              <td className="px-4 py-4 font-medium text-gray-900">
+                                {host.name}
+                              </td>
+                              <td className="px-4 py-4 text-gray-600">
+                                {host.email}
+                              </td>
+                              <td className="px-4 py-4">
+                                <span
+                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                    host.tier.toLowerCase() === "bronze"
+                                      ? "bg-amber-100 text-amber-700"
+                                      : host.tier.toLowerCase() === "silver"
+                                      ? "bg-gray-100 text-gray-700"
+                                      : host.tier.toLowerCase() === "gold"
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : host.tier.toLowerCase() === "platinum"
+                                      ? "bg-slate-100 text-slate-700"
+                                      : host.tier.toLowerCase() === "diamond"
+                                      ? "bg-cyan-100 text-cyan-700"
+                                      : "bg-emerald-100 text-emerald-700"
+                                  }`}
+                                >
+                                  {host.tier}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 text-right text-gray-700 font-semibold">
+                                {host.points.toLocaleString()}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className="sm:hidden max-h-[400px] overflow-y-auto">
+                    {filteredHosts.length === 0 ? (
+                      <div className="flex flex-col items-center gap-3 py-12 px-4">
+                        <div className="p-4 bg-gray-100 rounded-full">
+                          <Users className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 font-medium text-center">
+                          No hosts found
+                        </p>
+                        <p className="text-gray-400 text-sm text-center">
+                          {hostFilter !== 'All' ? `No hosts in ${hostFilter} tier` : 'Add hosts to get started'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {filteredHosts.map((host) => (
+                          <div
+                            key={host.id}
+                            className="p-4 hover:bg-gray-50 transition-all"
+                          >
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900 text-sm mb-1 truncate">
+                                  {host.name}
+                                </h4>
+                                <p className="text-xs text-gray-600 truncate">
+                                  {host.email}
+                                </p>
+                              </div>
+                              <span
+                                className={`flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                  host.tier.toLowerCase() === "bronze"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : host.tier.toLowerCase() === "silver"
+                                    ? "bg-gray-100 text-gray-700"
+                                    : host.tier.toLowerCase() === "gold"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : host.tier.toLowerCase() === "platinum"
+                                    ? "bg-slate-100 text-slate-700"
+                                    : host.tier.toLowerCase() === "diamond"
+                                    ? "bg-cyan-100 text-cyan-700"
+                                    : "bg-emerald-100 text-emerald-700"
+                                }`}
+                              >
+                                {host.tier}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                              <span className="text-xs text-gray-500 font-medium">
+                                Total Points
+                              </span>
+                              <span className="text-sm font-bold text-gray-900">
+                                {host.points.toLocaleString()} pts
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -302,13 +813,15 @@ const RewardsAdminPanel = () => {
                     <div className="flex items-center gap-2 ml-0 sm:ml-14">
                       <div className="px-2 sm:px-3 py-1 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full">
                         <span className="text-xs sm:text-sm font-semibold text-indigo-700">
-                          {selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)} Tier
+                          {selectedTier.charAt(0).toUpperCase() +
+                            selectedTier.slice(1)}{" "}
+                          Tier
                         </span>
                       </div>
                       <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500" />
                     </div>
                   </div>
-                  
+
                   <button
                     onClick={() => setShowModal(false)}
                     className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-300 group flex-shrink-0"
@@ -368,22 +881,35 @@ const RewardsAdminPanel = () => {
                     >
                       <option value="">Select a type...</option>
                       <option value="host-payment">Host Payment Coupon</option>
-                      <option value="reservation-discount">Reservation Discount</option>
+                      <option value="reservation-discount">
+                        Reservation Discount
+                      </option>
                       <option value="ewallet-credit">E-Wallet Credit</option>
                     </select>
                     <div className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                       {getTypeIcon()}
                     </div>
                     <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <svg
+                        className="w-4 h-4 sm:w-5 sm:h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </div>
                   </div>
                 </div>
 
                 {/* Conditional Fields */}
-                {(type === 'host-payment' || type === 'reservation-discount') && (
+                {(type === "host-payment" ||
+                  type === "reservation-discount") && (
                   <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-indigo-100">
                     <label className="block text-xs sm:text-sm font-semibold text-indigo-700 mb-2 flex items-center gap-2">
                       <Percent className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -404,7 +930,7 @@ const RewardsAdminPanel = () => {
                   </div>
                 )}
 
-                {type === 'ewallet-credit' && (
+                {type === "ewallet-credit" && (
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-green-100">
                     <label className="block text-xs sm:text-sm font-semibold text-green-700 mb-2 flex items-center gap-2">
                       <Wallet className="w-3 h-3 sm:w-4 sm:h-4" />

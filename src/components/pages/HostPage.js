@@ -15,7 +15,7 @@ import Notifications from "./hostpage-comp/Notifications";
 import { PayPalButtons } from "@paypal/react-paypal-js";
 import { CreditCard, Calendar, Shield, CheckCircle } from "lucide-react";
 import { updateHostTier } from "../../utils/updateHostTier";
-import { query, collection, where, getDocs} from "firebase/firestore"
+import { query, collection, where, getDocs } from "firebase/firestore";
 
 const HostPage = () => {
   const [user, setUser] = useState(null);
@@ -23,10 +23,11 @@ const HostPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [checkingPaypal, setCheckingPaypal] = useState(true);
-  const [billingDate, setBillingDate] = useState("");
+  
   const [hostPay, setHostPay] = useState(0);
   
-  
+  const [subscriptionExpired, setSubscriptionExpired] = useState(false);
+
 
   const todays = new Date();
 
@@ -38,43 +39,65 @@ const HostPage = () => {
   const options = { year: "numeric", month: "long", day: "numeric" };
   const nextBillingDate = next.toLocaleDateString("en-US", options);
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) {
-        // User is not logged in
-        setUser(null);
-        setCheckingPaypal(false);
-        return;
-      }
-
-      // User is logged in
-      setUser(currentUser);
-      updateHostTier(currentUser.uid);
-
-      try {
-        const userRef = doc(db, "users", currentUser.uid);
-        const docSnap = await getDoc(userRef);
-
-        if (docSnap.exists()) {
-          const hostData = docSnap.data();
-          setBillingDate(hostData.nextbilling);
-          console.log("The current user is: " + hostData.fullName);
-        }
-      } catch (err) {
-        console.error("Error fetching user data:", err);
-      }
-
+  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    if (!currentUser) {
+      setUser(null);
       setCheckingPaypal(false);
-    });
+      return;
+    }
 
-    return () => unsubscribe();
-  }, []);
-  const today = new Date();
+    setUser(currentUser);
+    updateHostTier(currentUser.uid);
 
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const dd = String(today.getDate()).padStart(2, "0");
-  const yy = String(today.getFullYear()).slice(-2);
+    try {
+      const userRef = doc(db, "users", currentUser.uid);
+      const docSnap = await getDoc(userRef);
 
-  const dateToday = `${mm}${dd}${yy}`;
+      if (docSnap.exists()) {
+        const hostData = docSnap.data();
+        console.log("The current user is:", hostData.fullName);
+
+        // Only proceed if role is host
+        if (hostData.role === "host") {
+          const today = new Date();
+          const mm = String(today.getMonth() + 1).padStart(2, "0");
+          const dd = String(today.getDate()).padStart(2, "0");
+          const yy = String(today.getFullYear()).slice(-2);
+          const dateToday = `${mm}${dd}${yy}`;
+
+          const current = parseInt(dateToday, 10);
+          const nextBill = parseInt(hostData.nextbilling || "0", 10);
+
+          console.log("Today:", current, "Next billing:", nextBill);
+
+          // Store these in state if you want to use elsewhere
+          
+         
+
+          if (current >= nextBill) {
+            console.log("⚠️ Subscription expired or due today!");
+            await updateDoc(userRef, { subscribed: false });
+            setSubscriptionExpired(true); // 👈 NEW
+          } else {
+            console.log("✅ Subscription still active");
+            setSubscriptionExpired(false);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+    }
+
+    setCheckingPaypal(false);
+  });
+
+  return () => unsubscribe();
+}, []);
+
+  
+
+  
+  
   const [promoModalOpen, setPromoModalOpen] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [validCodes, setValidCodes] = useState([]);
@@ -93,84 +116,82 @@ const HostPage = () => {
       return;
     }
 
-    
-    alert("You get a "+matchedCodeObj.discount+" off!");
+    alert("You get a " + matchedCodeObj.discount + " off!");
 
     setMatchedCodeObj(matchedCodeObj);
 
-    setHostPay(hostPay-(hostPay*(matchedCodeObj.discount/100)));
-    
+    setHostPay(hostPay - hostPay * (matchedCodeObj.discount / 100));
 
     setPromoCode("");
     closePromoModal();
   };
 
   useEffect(() => {
-      const fetchRewardCodes = async () => {
-        try {
-          const q = query(
-            collection(db, "rewards"),
-            where("type", "==", "host-payment")
-          );
-          const snap = await getDocs(q);
-    
-          const codes = snap.docs.flatMap((docSnap) => {
-            const data = docSnap.data();
-            return (data.codes || [])
-              .filter(c => !c.used) // only unused codes
-              .map(c => ({
-                ...c,
-                code: c.code.toLowerCase(),
-                discount: data.discount, // attach parent discount
-                rewardId: docSnap.id,
-              }));
-          });
-    
-          setValidCodes(codes);
-        } catch (error) {
-          console.error(error);
-        }
-      };
-    
-      fetchRewardCodes();
-    }, []);
-
-    const markCodeAsUsed = async (matchedCodeObj) => {
-      if (!matchedCodeObj) return;
-    
+    const fetchRewardCodes = async () => {
       try {
-        const docRef = doc(db, "rewards", matchedCodeObj.rewardId);
-        const docSnap = await getDoc(docRef);
-    
-        if (!docSnap.exists()) return;
-    
-        const data = docSnap.data();
-    
-        // Find the code in the codes array
-        const codeIndex = data.codes.findIndex(
-          (c) => c.code.toLowerCase() === matchedCodeObj.code
+        const q = query(
+          collection(db, "rewards"),
+          where("type", "==", "host-payment")
         );
-    
-        if (codeIndex === -1) return;
-    
-        const updatedCodes = [...data.codes];
-        updatedCodes[codeIndex] = {
-          ...updatedCodes[codeIndex],
-          used: true,
-        };
-    
-        await updateDoc(docRef, { codes: updatedCodes });
-    
-        // Update local validCodes state to remove the used code
-        setValidCodes((prev) =>
-          prev.filter((c) => c.code.toLowerCase() !== matchedCodeObj.code)
-        );
-    
-        console.log("Promo code marked as used.");
+        const snap = await getDocs(q);
+
+        const codes = snap.docs.flatMap((docSnap) => {
+          const data = docSnap.data();
+          return (data.codes || [])
+            .filter((c) => !c.used) // only unused codes
+            .map((c) => ({
+              ...c,
+              code: c.code.toLowerCase(),
+              discount: data.discount, // attach parent discount
+              rewardId: docSnap.id,
+            }));
+        });
+
+        setValidCodes(codes);
       } catch (error) {
-        console.error("Failed to mark promo code as used:", error);
+        console.error(error);
       }
     };
+
+    fetchRewardCodes();
+  }, []);
+
+  const markCodeAsUsed = async (matchedCodeObj) => {
+    if (!matchedCodeObj) return;
+
+    try {
+      const docRef = doc(db, "rewards", matchedCodeObj.rewardId);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) return;
+
+      const data = docSnap.data();
+
+      // Find the code in the codes array
+      const codeIndex = data.codes.findIndex(
+        (c) => c.code.toLowerCase() === matchedCodeObj.code
+      );
+
+      if (codeIndex === -1) return;
+
+      const updatedCodes = [...data.codes];
+      updatedCodes[codeIndex] = {
+        ...updatedCodes[codeIndex],
+        used: true,
+      };
+
+      await updateDoc(docRef, { codes: updatedCodes });
+
+      // Update local validCodes state to remove the used code
+      setValidCodes((prev) =>
+        prev.filter((c) => c.code.toLowerCase() !== matchedCodeObj.code)
+      );
+
+      console.log("Promo code marked as used.");
+    } catch (error) {
+      console.error("Failed to mark promo code as used:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchSubscription = async () => {
@@ -193,7 +214,7 @@ const HostPage = () => {
     fetchSubscription();
   }, []);
 
-  if (dateToday === billingDate) {
+  if (subscriptionExpired) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4">
         <div className="w-full max-w-md">
@@ -334,9 +355,9 @@ const HostPage = () => {
 
                       await updateDoc(doc(db, "users", user.uid), {
                         nextbilling: nextMonth,
+                        subscribed: true,
                       });
 
-                      
                       markCodeAsUsed(matchedCodeObj);
                       alert("Payment Successful");
                       window.location.reload();

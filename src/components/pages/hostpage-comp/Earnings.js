@@ -432,7 +432,7 @@ const [redeemLoading, setRedeemLoading] = useState(true);
             onClick={openPromoModal}
             className="px-10 py-4 rounded-2xl bg-olive text-white text-lg font-semibold shadow-xl transition-all duration-300 hover:scale-105 active:scale-95"
           >
-            Enter Promo Code
+            Enter Claim Code
           </button>
         </div>
 
@@ -471,13 +471,13 @@ const [redeemLoading, setRedeemLoading] = useState(true);
                     </div>
                     <div>
                       <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 animate-slideInLeft">
-                        Promo Code
+                        Claim Code
                       </h2>
                       <p
                         className="text-sm text-gray-500 animate-slideInLeft"
                         style={{ animationDelay: "0.1s" }}
                       >
-                        Unlock exclusive savings
+                        Additional credit on your ewallet
                       </p>
                     </div>
                   </div>
@@ -516,8 +516,8 @@ const [redeemLoading, setRedeemLoading] = useState(true);
                       </svg>
                     </div>
                     <p className="text-sm text-gray-600 leading-relaxed">
-                      Enter your promotional code below to receive special
-                      discounts and exclusive offers on your order.
+                      Enter your claim code below to receive special
+                      credits for your ewallet.
                     </p>
                   </div>
                 </div>

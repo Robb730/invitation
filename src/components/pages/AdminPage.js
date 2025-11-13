@@ -49,6 +49,11 @@ const AdminPage = () => {
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  const [statusFilter, setStatusFilter] = useState("All");
+  
+
+
+
   const navigate = useNavigate();
 
   // 🔹 Load admin data
@@ -100,13 +105,16 @@ const AdminPage = () => {
 
   // Filter reservations in real-time
   const filteredReservations = allReservations.filter((r) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      r.guestName?.toLowerCase().includes(query) ||
-      r.hostName?.toLowerCase().includes(query) ||
-      r.listingName?.toLowerCase().includes(query) ||
-      r.status?.toLowerCase().includes(query)
-    );
+    const matchesSearch =
+      r.guestName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.hostName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.listingName?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "All" ||
+      r.status?.toLowerCase() === statusFilter.toLowerCase();
+
+    return matchesSearch && matchesStatus;
   });
 
   const getStatusStyles = (status) => {
@@ -637,8 +645,12 @@ const AdminPage = () => {
         <td>${r.guestName || "—"}</td>
         <td>${r.hostName || "—"}</td>
         <td>${r.listingName || "—"}</td>
-        <td>${r.createdAt ? r.createdAt.toDate().toLocaleDateString() : "—"}</td>
-        <td><span class="status ${r.status?.toLowerCase() || ""}">${r.status || "Pending"}</span></td>
+        <td>${
+          r.createdAt ? r.createdAt.toDate().toLocaleDateString() : "—"
+        }</td>
+        <td><span class="status ${r.status?.toLowerCase() || ""}">${
+        r.status || "Pending"
+      }</span></td>
       </tr>
     `
     )
@@ -660,86 +672,85 @@ const AdminPage = () => {
     printWindow.print();
   };
 
- useEffect(() => {
-  const fetchLeaderboard = async () => {
-    try {
-      // Fetch ALL listings first
-      const listingsSnap = await getDocs(collection(db, "listings"));
-      const listings = listingsSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        // Fetch ALL listings first
+        const listingsSnap = await getDocs(collection(db, "listings"));
+        const listings = listingsSnap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
 
-      // Fetch ALL ratings
-      const ratingsSnap = await getDocs(collection(db, "ratings"));
-      const ratings = ratingsSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+        // Fetch ALL ratings
+        const ratingsSnap = await getDocs(collection(db, "ratings"));
+        const ratings = ratingsSnap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
 
-      // Fetch ALL reservations
-      const reservationSnap = await getDocs(collection(db, "reservations"));
-      const reservations = reservationSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+        // Fetch ALL reservations
+        const reservationSnap = await getDocs(collection(db, "reservations"));
+        const reservations = reservationSnap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
 
-      // Group ratings by listing
-      const ratingMap = {};
-      ratings.forEach((r) => {
-        if (!ratingMap[r.listingId]) ratingMap[r.listingId] = [];
-        ratingMap[r.listingId].push(r.rating);
-      });
+        // Group ratings by listing
+        const ratingMap = {};
+        ratings.forEach((r) => {
+          if (!ratingMap[r.listingId]) ratingMap[r.listingId] = [];
+          ratingMap[r.listingId].push(r.rating);
+        });
 
-      // Count bookings (Confirmed/Completed)
-      const bookingMap = {};
-      reservations.forEach((res) => {
-        if (!["confirmed", "completed"].includes(res.status?.toLowerCase()))
-          return;
-        bookingMap[res.listingId] = (bookingMap[res.listingId] || 0) + 1;
-      });
+        // Count bookings (Confirmed/Completed)
+        const bookingMap = {};
+        reservations.forEach((res) => {
+          if (!["confirmed", "completed"].includes(res.status?.toLowerCase()))
+            return;
+          bookingMap[res.listingId] = (bookingMap[res.listingId] || 0) + 1;
+        });
 
-      // Build leaderboard items FOR ALL LISTINGS
-      const leaderboardData = listings.map((listing) => {
-        const listingId = listing.id;
+        // Build leaderboard items FOR ALL LISTINGS
+        const leaderboardData = listings.map((listing) => {
+          const listingId = listing.id;
 
-        const ratingsArr = ratingMap[listingId] || [];
-        const avgRating =
-          ratingsArr.length > 0
-            ? ratingsArr.reduce((a, b) => a + b, 0) / ratingsArr.length
-            : 0;
+          const ratingsArr = ratingMap[listingId] || [];
+          const avgRating =
+            ratingsArr.length > 0
+              ? ratingsArr.reduce((a, b) => a + b, 0) / ratingsArr.length
+              : 0;
 
-        const bookingCount = bookingMap[listingId] || 0;
-        const reviewCount = ratingsArr.length;
+          const bookingCount = bookingMap[listingId] || 0;
+          const reviewCount = ratingsArr.length;
 
-        // Weighted score calculation
-        const score =
-          avgRating * 5 +      // rating weight
-          bookingCount * 1 +   // booking weight
-          reviewCount * 2;     // review count weight
+          // Weighted score calculation
+          const score =
+            avgRating * 5 + // rating weight
+            bookingCount * 1 + // booking weight
+            reviewCount * 2; // review count weight
 
-        return {
-          listingId,
-          title: listing.title || "Untitled",
-          avgRating,
-          reviewCount,
-          bookingCount,
-          score, // store the computed score
-        };
-      });
+          return {
+            listingId,
+            title: listing.title || "Untitled",
+            avgRating,
+            reviewCount,
+            bookingCount,
+            score, // store the computed score
+          };
+        });
 
-      // Sort by the combined score
-      leaderboardData.sort((a, b) => b.score - a.score);
+        // Sort by the combined score
+        leaderboardData.sort((a, b) => b.score - a.score);
 
-      setLeaderboard(leaderboardData);
-    } catch (err) {
-      console.error("Error building leaderboard:", err);
-    }
-  };
+        setLeaderboard(leaderboardData);
+      } catch (err) {
+        console.error("Error building leaderboard:", err);
+      }
+    };
 
-  fetchLeaderboard();
-}, []);
-
+    fetchLeaderboard();
+  }, []);
 
   // 🔸 Loading
   if (loading)
@@ -1039,117 +1050,136 @@ const AdminPage = () => {
 
       case "reservations":
         return (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    All Reservations
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+            {/* Header Section */}
+            <div className="px-4 sm:px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50">
+              <div className="flex flex-col gap-4">
+                {/* Title */}
+                <div className="text-center sm:text-left">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+                    📋 All Reservations
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-600">
                     Manage and track all platform bookings
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search reservations..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-4 py-2.5 w-full md:w-80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
-                  </div>
+                {/* Stats Summary */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  {["Confirmed", "Completed", "Cancelled"].map((status) => {
+                    const count = filteredReservations.filter(
+                      (r) => r.status?.toLowerCase() === status.toLowerCase()
+                    ).length;
+                    
+                    
+                    
+                    const colors = {
+                      Confirmed: "from-emerald-400 to-emerald-500",
+                      Completed: "from-blue-400 to-blue-500",
+                      Cancelled: "from-red-400 to-red-500"
+                    };
+
+                    return (
+                      <div
+                        key={status}
+                        className={`bg-gradient-to-br ${colors[status]} rounded-xl p-3 sm:p-4 text-white shadow-md transform hover:scale-105 transition-transform`}
+                      >
+                        <div className="text-lg sm:text-2xl font-bold mb-1">{count}</div>
+                        <div className="text-xs sm:text-sm opacity-90 flex items-center gap-1">
+                          
+                          <span className="hidden sm:inline">{status}</span>
+                          <span className="sm:hidden">{status.slice(0, 4)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="🔍 Search by guest, host, or listing..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-3 w-full border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all shadow-sm"
+                  />
+                </div>
+
+                {/* Filter Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  {["All", "Confirmed", "Completed", "Cancelled"].map(
+                    (filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => setStatusFilter(filter)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all transform hover:scale-105 ${
+                          statusFilter === filter
+                            ? "bg-gradient-to-r from-olive to-olive-darker text-white shadow-lg"
+                            : "bg-white text-gray-700 hover:bg-gray-100 border-2 border-gray-200"
+                        }`}
+                      >
+                        {filter}
+                      </button>
+                    )
+                  )}
                   <button
                     onClick={() => handlePrintReport()}
-                    className="px-4 py-2.5 bg-olive text-white rounded-lg hover:bg-olive-dark transition-all text-sm font-medium shadow-sm"
+                    className="ml-auto px-4 py-2 bg-gradient-to-r from-olive to-olive-dark text-white rounded-full hover:from-olive-dark hover:to-olive-darker transition-all text-sm font-medium shadow-lg transform hover:scale-105"
                   >
-                    🖨️ Print Report
+                    🖨️ <span className="hidden sm:inline">Print Report</span>
                   </button>
                 </div>
               </div>
-
-              {/* Summary of reservation statuses */}
-              <div className="mt-4 flex flex-wrap gap-4">
-                {["Confirmed", "Completed", "Cancelled"].map((status) => {
-                  const count = filteredReservations.filter(
-                    (r) => r.status?.toLowerCase() === status.toLowerCase()
-                  ).length;
-                  // Determine background and text color based on status
-                  let bgColor = "bg-gray-100";
-                  let textColor = "text-gray-700";
-
-                  if (status === "Confirmed") {
-                    bgColor = "bg-emerald-100";
-                    textColor = "text-emerald-700";
-                  } else if (status === "Completed") {
-                    bgColor = "bg-blue-100";
-                    textColor = "text-blue-700";
-                  } else if (status === "Cancelled") {
-                    bgColor = "bg-red-100";
-                    textColor = "text-red-700";
-                  }
-
-                  return (
-                    <div
-                      key={status}
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${bgColor} ${textColor}`}
-                    >
-                      {status}: {count}
-                    </div>
-                  );
-                })}
-              </div>
             </div>
 
-            {/* Scrollable table container */}
-            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto max-h-[500px] overflow-y-auto">
               <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Guest
+                <thead className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 z-10">
+                  <tr className="border-b-2 border-gray-200">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      👤 Guest
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Host
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      🏠 Host
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Listing
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      📍 Listing
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Date
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      📅 Date
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Status
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200 bg-white">
                   {filteredReservations.length > 0 ? (
                     filteredReservations.map((r) => (
                       <tr
                         key={r.id}
-                        className="hover:bg-gray-50 transition-colors"
+                        className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all"
                       >
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                           {r.guestName || "—"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
+                        <td className="px-6 py-4 text-sm text-gray-700">
                           {r.hostName || "—"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
+                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
                           {r.listingName || "—"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td className="px-6 py-4 text-sm text-gray-600">
                           {r.createdAt
                             ? r.createdAt.toDate().toLocaleDateString()
                             : "—"}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-4 text-center">
                           <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusStyles(
+                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${getStatusStyles(
                               r.status
                             )}`}
                           >
@@ -1161,18 +1191,81 @@ const AdminPage = () => {
                   ) : (
                     <tr>
                       <td colSpan="5" className="px-6 py-12 text-center">
-                        <Search className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                        <p className="text-gray-500 font-medium">
-                          No reservations found
-                        </p>
-                        <p className="text-gray-400 text-sm mt-1">
-                          Try adjusting your search
-                        </p>
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center mb-4">
+                            <Search className="w-10 h-10 text-gray-400" />
+                          </div>
+                          <p className="text-gray-600 font-semibold text-lg">
+                            No reservations found
+                          </p>
+                          <p className="text-gray-400 text-sm mt-2">
+                            Try adjusting your search or filter
+                          </p>
+                        </div>
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden max-h-[500px] overflow-y-auto p-4 space-y-3">
+              {filteredReservations.length > 0 ? (
+                filteredReservations.map((r) => (
+                  <div
+                    key={r.id}
+                    className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-4 border-2 border-gray-200 shadow-md hover:shadow-lg transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-500 mb-1">👤 Guest</div>
+                        <div className="font-bold text-gray-900 text-base">
+                          {r.guestName || "—"}
+                        </div>
+                      </div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${getStatusStyles(
+                          r.status
+                        )}`}
+                      >
+                        {r.status || "Pending"}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 font-medium">🏠 Host:</span>
+                        <span className="text-gray-700">{r.hostName || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 font-medium">📍 Listing:</span>
+                        <span className="text-gray-900 font-medium">{r.listingName || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 font-medium">📅 Date:</span>
+                        <span className="text-gray-600">
+                          {r.createdAt
+                            ? r.createdAt.toDate().toLocaleDateString()
+                            : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <p className="text-gray-600 font-semibold text-lg">
+                    No reservations found
+                  </p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    Try adjusting your search or filter
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -1269,7 +1362,7 @@ const AdminPage = () => {
       case "payment cashouts":
         return (
           <>
-            <PaymentCashoutsPanel />
+            <PaymentCashoutsPanel  />
           </>
         );
       case "wishlists":
@@ -1373,6 +1466,7 @@ const AdminPage = () => {
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              
             </button>
           ))}
         </div>
