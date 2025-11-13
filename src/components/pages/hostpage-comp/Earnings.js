@@ -20,6 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { cashoutRequest } from "../../../utils/cashoutSystem";
+import { addDoc, serverTimestamp } from "firebase/firestore";
 
 const Earnings = () => {
   const [totalEarnings, setTotalEarnings] = useState(0);
@@ -39,6 +40,10 @@ const Earnings = () => {
   const closePromoModal = () => setPromoModalOpen(false);
 
   const [validCodes, setValidCodes] = useState([]);
+
+  const [redeemHistory, setRedeemHistory] = useState([]);
+const [redeemLoading, setRedeemLoading] = useState(true);
+
 
   useEffect(() => {
     const fetchRewardCodes = async () => {
@@ -129,8 +134,19 @@ const Earnings = () => {
         await updateDoc(hostRef, {
           ewallet: currentEwallet + matchedCodeObj.money,
         });
+        await addDoc(collection(db, "redeem_history"), {
+  hostId: auth.currentUser.uid,
+  rewardId: matchedCodeObj.rewardId,
+  code: matchedCodeObj.code,
+  amount: matchedCodeObj.money,
+  timestamp: serverTimestamp(),
+});
+
         markCodeAsUsed(matchedCodeObj);
       }
+
+      // ✅ Add to redeem history
+      
 
       alert("Congratulations! You get ₱" + matchedCodeObj.money);
     } catch (error) {
@@ -211,11 +227,41 @@ const Earnings = () => {
     }
   }, []);
 
+  const fetchRedeemHistory = useCallback(async () => {
+  if (!auth.currentUser) return;
+  setRedeemLoading(true);
+  try {
+    const redeemRef = collection(db, "redeem_history");
+    const q = query(redeemRef, where("hostId", "==", auth.currentUser.uid));
+    const snapshot = await getDocs(q);
+
+    const list = snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
+
+    // Sort by most recent
+    list.sort((a, b) => {
+      const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp).getTime();
+      const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp).getTime();
+      return dateB - dateA;
+    });
+
+    setRedeemHistory(list);
+  } catch (err) {
+    console.error("Error fetching redeem history:", err);
+  } finally {
+    setRedeemLoading(false);
+  }
+}, []);
+
+
   useEffect(() => {
     fetchTotalEarnings();
     fetchWalletBalance();
     fetchCashoutHistory();
-  }, [fetchTotalEarnings, fetchWalletBalance, fetchCashoutHistory]);
+    fetchRedeemHistory();
+  }, [fetchTotalEarnings, fetchWalletBalance, fetchCashoutHistory, fetchRedeemHistory]);
 
   // Open modal
   const handleCashOutClick = () => {
@@ -391,112 +437,153 @@ const Earnings = () => {
         </div>
 
         {promoModalOpen && (
-  <div
-    className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn"
-    onClick={closePromoModal}
-  >
-    <div
-      className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-md relative overflow-hidden animate-scaleIn"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Decorative background elements */}
-      <div className="absolute -top-20 -right-20 w-40 h-40 bg-olive/10 rounded-full blur-3xl"></div>
-      <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-olive/5 rounded-full blur-3xl"></div>
-      
-      {/* Content wrapper */}
-      <div className="relative z-10">
-        {/* Header with close button */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-olive to-olive/80 rounded-2xl flex items-center justify-center shadow-lg animate-bounce-subtle">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 animate-slideInLeft">
-                Promo Code
-              </h2>
-              <p className="text-sm text-gray-500 animate-slideInLeft" style={{animationDelay: '0.1s'}}>
-                Unlock exclusive savings
-              </p>
-            </div>
-          </div>
-          
-          <button
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn"
             onClick={closePromoModal}
-            className="text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all duration-300 p-2 hover:bg-gray-100 rounded-full"
-            aria-label="Close modal"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+            <div
+              className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-md relative overflow-hidden animate-scaleIn"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Decorative background elements */}
+              <div className="absolute -top-20 -right-20 w-40 h-40 bg-olive/10 rounded-full blur-3xl"></div>
+              <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-olive/5 rounded-full blur-3xl"></div>
 
-        {/* Description with icon */}
-        <div className="bg-olive/5 border border-olive/20 rounded-2xl p-4 mb-6 animate-slideInRight">
-          <div className="flex items-start gap-3">
-            <div className="w-5 h-5 mt-0.5 text-olive flex-shrink-0">
-              <svg fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
+              {/* Content wrapper */}
+              <div className="relative z-10">
+                {/* Header with close button */}
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-olive to-olive/80 rounded-2xl flex items-center justify-center shadow-lg animate-bounce-subtle">
+                      <svg
+                        className="w-6 h-6 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 animate-slideInLeft">
+                        Promo Code
+                      </h2>
+                      <p
+                        className="text-sm text-gray-500 animate-slideInLeft"
+                        style={{ animationDelay: "0.1s" }}
+                      >
+                        Unlock exclusive savings
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={closePromoModal}
+                    className="text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all duration-300 p-2 hover:bg-gray-100 rounded-full"
+                    aria-label="Close modal"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Description with icon */}
+                <div className="bg-olive/5 border border-olive/20 rounded-2xl p-4 mb-6 animate-slideInRight">
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 mt-0.5 text-olive flex-shrink-0">
+                      <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      Enter your promotional code below to receive special
+                      discounts and exclusive offers on your order.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Input field with icon */}
+                <div className="relative mb-6 animate-slideInUp">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="SAVE2024"
+                    className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-olive/20 focus:border-olive focus:outline-none text-gray-700 transition-all placeholder:text-gray-400 font-medium text-lg tracking-wide hover:border-gray-300"
+                  />
+                </div>
+
+                {/* Action buttons */}
+                <div
+                  className="flex flex-col-reverse sm:flex-row justify-end gap-3 animate-slideInUp"
+                  style={{ animationDelay: "0.1s" }}
+                >
+                  <button
+                    onClick={closePromoModal}
+                    className="w-full sm:w-auto px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 hover:border-gray-300 transition-all font-semibold hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={handlePromoSubmit}
+                    className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-olive to-olive/90 text-white rounded-2xl hover:shadow-xl transition-all font-semibold hover:scale-[1.02] active:scale-[0.98] hover:from-olive/90 hover:to-olive flex items-center justify-center gap-2 group"
+                  >
+                    <span>Apply Code</span>
+                    <svg
+                      className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 7l5 5m0 0l-5 5m5-5H6"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Enter your promotional code below to receive special discounts and exclusive offers on your order.
-            </p>
           </div>
-        </div>
-
-        {/* Input field with icon */}
-        <div className="relative mb-6 animate-slideInUp">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-          </div>
-          <input
-            type="text"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-            placeholder="SAVE2024"
-            className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-olive/20 focus:border-olive focus:outline-none text-gray-700 transition-all placeholder:text-gray-400 font-medium text-lg tracking-wide hover:border-gray-300"
-          />
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 animate-slideInUp" style={{animationDelay: '0.1s'}}>
-          <button
-            onClick={closePromoModal}
-            className="w-full sm:w-auto px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 hover:border-gray-300 transition-all font-semibold hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Cancel
-          </button>
-
-          <button
-            onClick={handlePromoSubmit}
-            className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-olive to-olive/90 text-white rounded-2xl hover:shadow-xl transition-all font-semibold hover:scale-[1.02] active:scale-[0.98] hover:from-olive/90 hover:to-olive flex items-center justify-center gap-2 group"
-          >
-            <span>Apply Code</span>
-            <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+        )}
 
         {/* Cashout History */}
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 border border-gray-100">
@@ -649,6 +736,81 @@ const Earnings = () => {
             </>
           )}
         </div>
+        {/* Redeem Code History */}
+<div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 border border-gray-100 mt-10">
+  {/* Header */}
+  <div className="flex items-center gap-3 mb-4 sm:mb-6">
+    <div className="p-2 bg-[#c8d3ad] rounded-xl">
+      <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-olive-darker" />
+    </div>
+    <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
+      Redeem Code History
+    </h2>
+  </div>
+
+  {/* Loading State */}
+  {redeemLoading ? (
+    <div className="text-center py-12 sm:py-16">
+      <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-200 border-t-olive mx-auto"></div>
+      <p className="text-gray-500 mt-4 text-sm sm:text-base">Loading history...</p>
+    </div>
+  ) : redeemHistory.length === 0 ? (
+    // Empty State
+    <div className="text-center py-12 sm:py-16">
+      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Wallet className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+      </div>
+      <p className="text-gray-500 text-base sm:text-lg font-medium">
+        No promo codes redeemed yet
+      </p>
+      <p className="text-gray-400 text-sm mt-1">
+        Your redeem history will appear here
+      </p>
+    </div>
+  ) : (
+    <div className="hidden md:block overflow-hidden rounded-2xl border border-gray-200">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gradient-to-r from-olive to-olive-darker">
+            <tr>
+              <th className="py-4 px-6 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                Code
+              </th>
+              <th className="py-4 px-6 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                Amount
+              </th>
+              <th className="py-4 px-6 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                Date
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {redeemHistory.map((r) => (
+              <tr key={r.id} className="hover:bg-gray-50 transition-colors duration-150">
+                <td className="py-4 px-6 font-mono text-sm font-semibold text-gray-900">
+                  {r.code}
+                </td>
+                <td className="py-4 px-6 text-center font-bold text-lg text-gray-900">
+                  ₱{r.amount.toLocaleString()}
+                </td>
+                <td className="py-4 px-6 text-center text-sm text-gray-600 whitespace-nowrap">
+                  {r.timestamp?.toDate
+                    ? r.timestamp.toDate().toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : ""}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
+</div>
+
 
         {/* PayPal Modal */}
         {showModal && (

@@ -493,16 +493,18 @@ const markCodeAsUsed = async (matchedCodeObj) => {
 
   const handleApplyPromo = () => {
     const matchedCodeObj = validCodes.find(c => c.code === promoCode.toLowerCase());
+    console.log(listing.promoCode);
     
 
-    if (
-      (listing.promoCode &&
-        listing.promoCode.toLowerCase() === promoCode.toLowerCase()) ||
-      matchedCodeObj
-    ) {
-      console.log(matchedCodeObj.discount);
+    if ((listing.promoCode && listing.promoCode.toLowerCase() === promoCode.toLowerCase()) || matchedCodeObj) {
+      let appliedDiscount
+      if(matchedCodeObj){
+        appliedDiscount = matchedCodeObj.discount;
+      } else {
+        appliedDiscount = listing.discount;
+      }
 
-      const appliedDiscount = matchedCodeObj ? matchedCodeObj.discount : listing.discountPercent || 10;
+      
         
       setDiscount(appliedDiscount);
       setMatchedCode(matchedCodeObj);

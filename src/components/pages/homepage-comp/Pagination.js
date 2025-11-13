@@ -352,16 +352,16 @@ const fitsGuests =
 
   // 🔹 Click Handlers
   const handleListingClick = (id) => {
-    const user = getAuth().currentUser;
-    user ? navigate(`/homes/${id}`) : navigate("/login");
+    
+    navigate(`/homes/${id}`);
   };
   const handleExperiencesClick = (id) => {
-    const user = getAuth().currentUser;
-    user ? navigate(`/experiences/${id}`) : navigate("/login");
+    
+    navigate(`/experiences/${id}`);
   };
   const handleServicesClick = (id) => {
-    const user = getAuth().currentUser;
-    user ? navigate(`/services/${id}`) : navigate("/login");
+    
+    navigate(`/services/${id}`)
   };
 
   // 🔹 Split categories
