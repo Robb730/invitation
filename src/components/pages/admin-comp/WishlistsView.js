@@ -8,7 +8,7 @@ import {
   orderBy,
   query,
 } from "firebase/firestore";
-import { Heart, Check, Eye, Sparkles, Search, Filter } from 'lucide-react';
+import { Heart, Check, Eye, Sparkles, Search, Filter } from "lucide-react";
 
 const WishlistsView = () => {
   const [wishes, setWishes] = useState([]);
@@ -19,18 +19,19 @@ const WishlistsView = () => {
 
   const stats = {
     total: wishes.length,
-    unread: wishes.filter(w => !w.read).length,
-    liked: wishes.filter(w => w.liked).length,
-    read: wishes.filter(w => w.read).length
-  }
-
-  
+    unread: wishes.filter((w) => !w.read).length,
+    liked: wishes.filter((w) => w.liked).length,
+    read: wishes.filter((w) => w.read).length,
+  };
 
   // Fetch all wishes
   useEffect(() => {
     const fetchWishes = async () => {
       try {
-        const q = query(collection(db, "wishlist"), orderBy("createdAt", "desc"));
+        const q = query(
+          collection(db, "wishlist"),
+          orderBy("createdAt", "desc")
+        );
         const snap = await getDocs(q);
         const wishData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setWishes(wishData);
@@ -69,26 +70,29 @@ const WishlistsView = () => {
     }
   };
 
-  
-
   // Filter logic
   const filteredWishes = wishes.filter((w) => {
-    const matchesFilter = 
-      filter === "all" ? true :
-      filter === "unread" ? !w.read :
-      filter === "read" ? w.read :
-      filter === "liked" ? w.liked : true;
+    const matchesFilter =
+      filter === "all"
+        ? true
+        : filter === "unread"
+        ? !w.read
+        : filter === "read"
+        ? w.read
+        : filter === "liked"
+        ? w.liked
+        : true;
 
-    const matchesSearch = 
+    const matchesSearch =
       w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       w.wish.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     return matchesFilter && matchesSearch;
   });
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-beige via-[#f5e6d3] to-beige">
+      <div className="flex items-center justify-center h-screen ">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#3d4f3a]/30 border-t-[#3d4f3a] rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-700 text-lg font-medium">Loading wishes...</p>
@@ -111,7 +115,9 @@ const WishlistsView = () => {
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
                   Wishes Dashboard
                 </h1>
-                <p className="text-sm text-slate-500 mt-0.5">Manage user feedback and suggestions</p>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Manage user feedback and suggestions
+                </p>
               </div>
             </div>
           </div>
@@ -119,22 +125,48 @@ const WishlistsView = () => {
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
             {[
-              { label: "Total", value: stats.total, color: "from-blue-500 to-blue-600", icon: "📊" },
-              { label: "Unread", value: stats.unread, color: "from-amber-500 to-orange-600", icon: "🔔" },
-              { label: "Read", value: stats.read, color: "from-green-500 to-emerald-600", icon: "✓" },
-              { label: "Liked", value: stats.liked, color: "from-pink-500 to-rose-600", icon: "❤️" }
+              {
+                label: "Total",
+                value: stats.total,
+                color: "from-blue-500 to-blue-600",
+                icon: "📊",
+              },
+              {
+                label: "Unread",
+                value: stats.unread,
+                color: "from-amber-500 to-orange-600",
+                icon: "🔔",
+              },
+              {
+                label: "Read",
+                value: stats.read,
+                color: "from-green-500 to-emerald-600",
+                icon: "✓",
+              },
+              {
+                label: "Liked",
+                value: stats.liked,
+                color: "from-pink-500 to-rose-600",
+                icon: "❤️",
+              },
             ].map((stat, idx) => (
-              <div 
+              <div
                 key={stat.label}
                 className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/50 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
                 style={{ animationDelay: `${idx * 100}ms` }}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{stat.label}</p>
-                    <p className="text-2xl font-bold text-slate-900 mt-1">{stat.value}</p>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      {stat.label}
+                    </p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">
+                      {stat.value}
+                    </p>
                   </div>
-                  <div className={`w-10 h-10 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center text-xl shadow-lg`}>
+                  <div
+                    className={`w-10 h-10 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center text-xl shadow-lg`}
+                  >
                     {stat.icon}
                   </div>
                 </div>
@@ -162,8 +194,8 @@ const WishlistsView = () => {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 ${
-                showFilters 
-                  ? "bg-slate-900 text-white shadow-lg" 
+                showFilters
+                  ? "bg-slate-900 text-white shadow-lg"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
@@ -179,7 +211,7 @@ const WishlistsView = () => {
                 { id: "all", label: "All Wishes", emoji: "📋" },
                 { id: "unread", label: "Unread", emoji: "🔔" },
                 { id: "read", label: "Read", emoji: "✓" },
-                { id: "liked", label: "Liked", emoji: "❤️" }
+                { id: "liked", label: "Liked", emoji: "❤️" },
               ].map((f) => (
                 <button
                   key={f.id}
@@ -200,109 +232,115 @@ const WishlistsView = () => {
 
         {/* Wishes List */}
         {filteredWishes.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-200/50">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="w-8 h-8 text-slate-400" />
+  <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-200/50">
+    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <Search className="w-8 h-8 text-slate-400" />
+    </div>
+    <p className="text-slate-600 font-medium">No wishes found</p>
+    <p className="text-sm text-slate-400 mt-1">
+      Try adjusting your filters or search term
+    </p>
+  </div>
+) : (
+  <div className="space-y-4">
+    {filteredWishes.map((wish, idx) => (
+      <div
+        key={wish.id}
+        className={`bg-white rounded-2xl p-4 sm:p-6 shadow-sm border transition-all duration-300 hover:shadow-md group w-full ${
+          wish.read
+            ? "border-green-200 bg-gradient-to-br from-white to-green-50/30"
+            : "border-slate-200 hover:border-blue-300"
+        }`}
+        style={{ animationDelay: `${idx * 50}ms` }}
+      >
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
+
+          {/* Avatar + Info */}
+          <div className="flex items-start gap-3">
+            <div
+              className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm shrink-0 ${
+                wish.userId === "guest"
+                  ? "bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600"
+                  : "bg-gradient-to-br from-blue-500 to-purple-500 text-white"
+              }`}
+            >
+              {wish.name.charAt(0).toUpperCase()}
             </div>
-            <p className="text-slate-600 font-medium">No wishes found</p>
-            <p className="text-sm text-slate-400 mt-1">Try adjusting your filters or search term</p>
+
+            <div className="min-w-0">
+              <h2 className="font-bold text-slate-900 text-lg truncate">
+                {wish.name}
+              </h2>
+              <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                {wish.userId === "guest" ? (
+                  <>
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
+                    Guest user
+                  </>
+                ) : (
+                  <>
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                    {wish.userId}
+                  </>
+                )}
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredWishes.map((wish, idx) => (
-              <div
-                key={wish.id}
-                className={`bg-white rounded-2xl p-6 shadow-sm border transition-all duration-300 hover:shadow-md group ${
-                  wish.read
-                    ? "border-green-200 bg-gradient-to-br from-white to-green-50/30"
-                    : "border-slate-200 hover:border-blue-300"
-                }`}
-                style={{ animationDelay: `${idx * 50}ms` }}
-              >
-                {/* Header */}
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-start gap-3">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm ${
-                      wish.userId === "guest" 
-                        ? "bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600" 
-                        : "bg-gradient-to-br from-blue-500 to-purple-500 text-white"
-                    }`}>
-                      {wish.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <h2 className="font-bold text-slate-900 text-lg">
-                        {wish.name}
-                      </h2>
-                      <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-                        {wish.userId === "guest" ? (
-                          <>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
-                            Guest user
-                          </>
-                        ) : (
-                          <>
-                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                            {wish.userId}
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleMarkRead(wish.id)}
-                      disabled={wish.read}
-                      className={`px-4 py-2 text-sm rounded-xl font-medium transition-all duration-200 flex items-center gap-2 ${
-                        wish.read
-                          ? "bg-green-100 text-green-700 cursor-default shadow-inner"
-                          : "bg-slate-900 text-white hover:bg-slate-800 shadow-sm hover:shadow-md active:scale-95"
-                      }`}
-                    >
-                      {wish.read ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          Read
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-4 h-4" />
-                          Mark Read
-                        </>
-                      )}
-                    </button>
+          {/* Action Buttons */}
+          <div className="flex flex-wrap sm:flex-nowrap gap-2">
+            <button
+              onClick={() => handleMarkRead(wish.id)}
+              disabled={wish.read}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex-1 sm:flex-none flex items-center justify-center gap-2 ${
+                wish.read
+                  ? "bg-green-100 text-green-700 cursor-default shadow-inner"
+                  : "bg-slate-900 text-white hover:bg-slate-800 shadow-sm hover:shadow-md active:scale-95"
+              }`}
+            >
+              {wish.read ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Read
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4" />
+                  Mark Read
+                </>
+              )}
+            </button>
 
-                    <button
-                      onClick={() => handleLikeWish(wish.id, wish.liked)}
-                      disabled={!wish.read}
-                      className={`px-4 py-2 text-sm rounded-xl font-medium border transition-all duration-200 flex items-center gap-2 ${
-                        !wish.read
-                          ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                          : wish.liked
-                          ? "bg-gradient-to-r from-pink-500 to-rose-500 border-pink-500 text-white shadow-lg shadow-pink-500/30 hover:shadow-xl active:scale-95"
-                          : "bg-white border-slate-200 text-slate-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600 shadow-sm active:scale-95"
-                      }`}
-                    >
-                      <Heart className={`w-4 h-4 ${wish.liked ? "fill-current" : ""}`} />
-                      {wish.liked ? "Liked" : "Like"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Wish Content */}
-                <div className="bg-slate-50/50 rounded-xl p-4 mb-3 border border-slate-100">
-                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                    {wish.wish}
-                  </p>
-                </div>
-
-                {/* Timestamp */}
-                
-              </div>
-            ))}
+            <button
+              onClick={() => handleLikeWish(wish.id, wish.liked)}
+              disabled={!wish.read}
+              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all flex-1 sm:flex-none flex items-center justify-center gap-2 ${
+                !wish.read
+                  ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+                  : wish.liked
+                  ? "bg-gradient-to-r from-pink-500 to-rose-500 border-pink-500 text-white shadow-lg shadow-pink-500/30 hover:shadow-xl active:scale-95"
+                  : "bg-white border-slate-200 text-slate-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600 shadow-sm active:scale-95"
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${wish.liked ? "fill-current" : ""}`} />
+              {wish.liked ? "Liked" : "Like"}
+            </button>
           </div>
-        )}
+        </div>
+
+        {/* Wish Content */}
+        <div className="bg-slate-50/50 rounded-xl p-4 mb-3 border border-slate-100">
+          <p className="text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+            {wish.wish}
+          </p>
+        </div>
+
+      </div>
+    ))}
+  </div>
+)}
       </div>
 
       <style>{`

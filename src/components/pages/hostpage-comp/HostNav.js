@@ -426,7 +426,25 @@ const HostNav = ({ user, toggleSidebar }) => {
             {open && (
               <div
                 ref={menuRef}
-                className="absolute -right-16 top-8 bg-white backdrop-blur-md border border-white/40 rounded-xl shadow-lg py-2 w-40 flex flex-col text-olive-dark text-sm animate-fade-in"
+                className="
+              absolute 
+              right-0                /* Fix: aligns correctly on mobile */
+              sm:-right-4            /* Slight offset only for larger screens */
+              top-10
+              bg-white 
+              backdrop-blur-md 
+              border border-white/40 
+              rounded-xl 
+              shadow-lg 
+              py-2 
+              w-44 
+              flex 
+              flex-col 
+              text-olive-dark 
+              text-sm 
+              animate-fade-in
+              z-50                  /* Fix overlap issues */
+            "
               >
                 <div className="px-4 py-2 text-left text-black text-sm font-medium border-b border-gray-200">
                   {fullname || "Loading..."}
